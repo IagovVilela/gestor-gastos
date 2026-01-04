@@ -22,11 +22,19 @@ const COLORS = [
 export function ExpensesByCategoryChart() {
   const { expensesByCategory, loading } = useDashboard();
 
-  const chartData = expensesByCategory.map((item) => ({
-    name: item.category?.name || 'Sem categoria',
-    value: Number(item.total),
-    count: item.count,
-  }));
+  // Calcular total para mostrar porcentagens
+  const total = expensesByCategory.reduce((sum, item) => sum + Number(item.total), 0);
+
+  const chartData = expensesByCategory.map((item) => {
+    const value = Number(item.total);
+    const percentage = total > 0 ? (value / total) * 100 : 0;
+    return {
+      name: item.category?.name || 'Sem categoria',
+      value,
+      count: item.count,
+      percentage: percentage.toFixed(1),
+    };
+  });
 
   if (loading) {
     return (
@@ -60,14 +68,18 @@ export function ExpensesByCategoryChart() {
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
+      const data = payload[0].payload;
       return (
         <div className="rounded-lg border bg-background p-3 shadow-sm">
-          <p className="font-medium">{payload[0].name}</p>
-          <p className="text-sm text-muted-foreground">
-            {formatCurrency(payload[0].value)}
+          <p className="font-medium">{data.name}</p>
+          <p className="text-sm text-red-600 font-semibold">
+            {formatCurrency(data.value)}
           </p>
           <p className="text-xs text-muted-foreground">
-            {payload[0].payload.count} registro(s)
+            {data.percentage}% do total
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {data.count} registro(s)
           </p>
         </div>
       );
@@ -82,6 +94,12 @@ export function ExpensesByCategoryChart() {
           <CardTitle>Gastos por Categoria</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 text-center">
+            <p className="text-2xl font-bold text-red-600">
+              {formatCurrency(total)}
+            </p>
+            <p className="text-sm text-muted-foreground">Total de Despesas</p>
+          </div>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
@@ -89,10 +107,11 @@ export function ExpensesByCategoryChart() {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }) =>
-                  `${name} ${(percent * 100).toFixed(0)}%`
-                }
-                outerRadius={80}
+                label={({ name, percent }) => {
+                  const percentage = (percent * 100).toFixed(1);
+                  return `${name}\n${percentage}%`;
+                }}
+                outerRadius={100}
                 fill="#8884d8"
                 dataKey="value"
               >

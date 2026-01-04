@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AlertsService } from './alerts.service';
 import { GoalsService } from '../goals/goals.service';
@@ -11,6 +11,7 @@ export class AlertGeneratorService {
     private prisma: PrismaService,
     private alertsService: AlertsService,
     private goalsService: GoalsService,
+    @Inject(forwardRef(() => ExpensesService))
     private expensesService: ExpensesService,
     private receiptsService: ReceiptsService,
   ) {}
@@ -74,7 +75,7 @@ export class AlertGeneratorService {
         if (!existingAlert) {
           await this.alertsService.create(userId, {
             title: 'Meta Alcançada! 🎉',
-            message: `Parabéns! Você alcançou sua meta "${goal.name}". Valor atual: R$ ${Number(progress.currentAmount).toFixed(2)}`,
+            message: `Parabéns! Você alcançou sua meta "${goal.title}". Valor atual: R$ ${Number(progress.currentAmount).toFixed(2)}`,
             type: 'GOAL_ACHIEVED',
             severity: 'SUCCESS',
             relatedGoalId: goal.id,
@@ -99,7 +100,7 @@ export class AlertGeneratorService {
         if (!existingAlert) {
           await this.alertsService.create(userId, {
             title: 'Meta Próxima!',
-            message: `Você está ${progressPercentage.toFixed(0)}% da sua meta "${goal.name}". Faltam R$ ${(Number(goal.targetAmount) - Number(progress.currentAmount)).toFixed(2)}`,
+            message: `Você está ${progressPercentage.toFixed(0)}% da sua meta "${goal.title}". Faltam R$ ${(Number(goal.targetAmount) - Number(progress.currentAmount)).toFixed(2)}`,
             type: 'GOAL_WARNING',
             severity: 'WARNING',
             relatedGoalId: goal.id,
@@ -128,7 +129,7 @@ export class AlertGeneratorService {
           if (!existingAlert) {
             await this.alertsService.create(userId, {
               title: 'Atenção: Meta com Prazo Próximo',
-              message: `Sua meta "${goal.name}" está ${progressPercentage.toFixed(0)}% completa e faltam apenas ${daysUntilDeadline} dia(s).`,
+              message: `Sua meta "${goal.title}" está ${progressPercentage.toFixed(0)}% completa e faltam apenas ${daysUntilDeadline} dia(s).`,
               type: 'GOAL_WARNING',
               severity: 'WARNING',
               relatedGoalId: goal.id,
@@ -345,9 +346,45 @@ export class AlertGeneratorService {
     });
 
     for (const expense of recurringExpenses) {
-      if (!expense.recurringType || !expense.recurringNextDate) continue;
+      if (!expense.recurringType) continue;
 
-      const nextDate = new Date(expense.recurringNextDate);
+      // Calcular a próxima data de recorrência baseada na data atual e tipo de recorrência
+      const expenseDate = new Date(expense.date);
+      let nextDate = new Date(expenseDate);
+
+      switch (expense.recurringType) {
+        case 'DAILY':
+          nextDate.setDate(nextDate.getDate() + 1);
+          break;
+        case 'WEEKLY':
+          nextDate.setDate(nextDate.getDate() + 7);
+          break;
+        case 'MONTHLY':
+          nextDate.setMonth(nextDate.getMonth() + 1);
+          break;
+        case 'YEARLY':
+          nextDate.setFullYear(nextDate.getFullYear() + 1);
+          break;
+      }
+
+      // Se a próxima data já passou, calcular a próxima ocorrência válida
+      while (nextDate <= now) {
+        switch (expense.recurringType) {
+          case 'DAILY':
+            nextDate.setDate(nextDate.getDate() + 1);
+            break;
+          case 'WEEKLY':
+            nextDate.setDate(nextDate.getDate() + 7);
+            break;
+          case 'MONTHLY':
+            nextDate.setMonth(nextDate.getMonth() + 1);
+            break;
+          case 'YEARLY':
+            nextDate.setFullYear(nextDate.getFullYear() + 1);
+            break;
+        }
+      }
+
       const daysUntil = Math.ceil((nextDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
       // Alerta se está próximo (1-3 dias)
@@ -380,4 +417,5 @@ export class AlertGeneratorService {
     return alertsGenerated;
   }
 }
+
 

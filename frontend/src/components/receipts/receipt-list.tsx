@@ -8,7 +8,7 @@ import { ReceiptFilters, ReceiptFiltersProps } from './receipt-filters';
 import api from '@/lib/api';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Pencil, Trash2, ArrowUpCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, ArrowUpCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { FadeIn } from '@/components/animations/fade-in';
 import {
@@ -44,6 +44,12 @@ export function ReceiptList() {
   const [editingReceipt, setEditingReceipt] = useState<string | undefined>();
   const [deletingReceipt, setDeletingReceipt] = useState<string | undefined>();
   const [filters, setFilters] = useState<ReceiptFilters>({});
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 0,
+  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -52,7 +58,7 @@ export function ReceiptList() {
   }, []);
 
   useEffect(() => {
-    fetchReceipts();
+    fetchReceipts(1); // Resetar para página 1 quando filtros mudarem
   }, [filters]);
 
   const fetchCategories = async () => {
@@ -66,17 +72,27 @@ export function ReceiptList() {
     }
   };
 
-  const fetchReceipts = async () => {
+  const fetchReceipts = async (page = 1) => {
     try {
       setLoading(true);
-      const params: any = {};
+      const params: any = {
+        page,
+        limit: pagination.limit,
+      };
       Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== '' && key !== 'page') {
           params[key] = value;
         }
       });
       const response = await api.get('/receipts', { params });
-      setReceipts(response.data);
+      
+      // Suportar formato antigo (array) e novo (objeto com paginação)
+      if (Array.isArray(response.data)) {
+        setReceipts(response.data);
+      } else {
+        setReceipts(response.data.data || []);
+        setPagination(response.data.pagination || pagination);
+      }
     } catch (error) {
       toast({
         title: 'Erro',
@@ -205,6 +221,35 @@ export function ReceiptList() {
               ))}
             </div>
           )}
+
+          {/* Paginação */}
+          {pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                Mostrando {((pagination.page - 1) * pagination.limit) + 1} a {Math.min(pagination.page * pagination.limit, pagination.total)} de {pagination.total} receitas
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchReceipts(pagination.page - 1)}
+                  disabled={pagination.page === 1 || loading}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchReceipts(pagination.page + 1)}
+                  disabled={pagination.page >= pagination.totalPages || loading}
+                >
+                  Próxima
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -215,7 +260,7 @@ export function ReceiptList() {
           if (!open) setEditingReceipt(undefined);
         }}
         onSuccess={() => {
-          fetchReceipts();
+          fetchReceipts(pagination.page);
           setFormOpen(false);
           setEditingReceipt(undefined);
         }}

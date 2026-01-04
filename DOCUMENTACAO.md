@@ -55,6 +55,27 @@ Decisões importantes sobre arquitetura, padrões e tecnologias serão documenta
 
 ## 📝 Histórico de Mudanças
 
+### 04/01/2025 - FASE 14: Página de Configurações Completa ✅
+- **Backend - Modelo UserSettings**: Criado modelo Prisma para armazenar preferências do usuário
+  - Preferências financeiras (moeda, formato de data, número, primeiro dia da semana)
+  - Configurações de notificações (email, alertas de orçamento, metas, pagamentos recorrentes)
+  - Preferências de interface (tema, idioma)
+  - Configurações de privacidade e segurança (timeout de sessão, senha para ações sensíveis)
+- **Backend - Módulo Settings**: Implementado módulo completo
+  - GET /settings - Obter configurações
+  - PATCH /settings - Atualizar configurações
+  - GET /settings/profile - Obter perfil
+  - PATCH /settings/profile - Atualizar perfil
+  - POST /settings/change-password - Alterar senha
+  - GET /settings/export - Exportar dados do usuário
+- **Frontend - Página de Configurações**: Implementada página completa com 4 seções
+  - **Seção de Perfil**: Editar nome, email e alterar senha
+  - **Seção de Preferências**: Configurar moeda, formato de data, primeiro dia da semana e tema
+  - **Seção de Notificações**: Configurar alertas e frequência de relatórios
+  - **Seção de Exportação**: Exportar dados em JSON ou CSV
+- **Integração**: Todas as seções integradas com animações e design responsivo
+- **Validações**: Validação de senha atual, confirmação de nova senha, verificação de email único
+
 ### 04/01/2025 - FASE 13: Sistema Completo de Alertas, Filtros, Histórico e Análises ✅
 - **Página de Alertas**: Listagem completa com filtros, marcar como lido, deletar
 - **Geração Automática de Alertas**: Sistema inteligente que gera alertas automaticamente

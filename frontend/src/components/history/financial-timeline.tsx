@@ -66,12 +66,72 @@ export function FinancialTimeline() {
   const fetchTransactions = async () => {
     try {
       setLoading(true);
-      const [receiptsRes, expensesRes] = await Promise.all([
-        api.get('/receipts'),
-        api.get('/expenses'),
-      ]);
+      
+      // Buscar apenas últimos 6 meses por padrão para melhor performance
+      const now = new Date();
+      const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+      const startDate = sixMonthsAgo.toISOString().split('T')[0];
+      
+      // Buscar múltiplas páginas se necessário (máximo 100 por página)
+      let allReceipts: any[] = [];
+      let allExpenses: any[] = [];
+      let receiptsPage = 1;
+      let expensesPage = 1;
+      let hasMoreReceipts = true;
+      let hasMoreExpenses = true;
+      const maxPages = 5; // Limitar a 5 páginas (500 itens no total)
 
-      const receipts: Transaction[] = receiptsRes.data.map((r: any) => ({
+      // Buscar receitas em páginas
+      while (hasMoreReceipts && receiptsPage <= maxPages) {
+        const receiptsRes = await api.get('/receipts', {
+          params: {
+            startDate,
+            limit: 100,
+            page: receiptsPage,
+          },
+        });
+        
+        const receiptsData = Array.isArray(receiptsRes.data) 
+          ? receiptsRes.data 
+          : (receiptsRes.data.data || []);
+        
+        allReceipts = [...allReceipts, ...receiptsData];
+        
+        if (Array.isArray(receiptsRes.data)) {
+          hasMoreReceipts = false;
+        } else {
+          const pagination = receiptsRes.data.pagination;
+          hasMoreReceipts = pagination && receiptsPage < pagination.totalPages;
+        }
+        receiptsPage++;
+      }
+
+      // Buscar despesas em páginas
+      while (hasMoreExpenses && expensesPage <= maxPages) {
+        const expensesRes = await api.get('/expenses', {
+          params: {
+            startDate,
+            limit: 100,
+            page: expensesPage,
+          },
+        });
+        
+        const expensesData = Array.isArray(expensesRes.data) 
+          ? expensesRes.data 
+          : (expensesRes.data.data || []);
+        
+        allExpenses = [...allExpenses, ...expensesData];
+        
+        if (Array.isArray(expensesRes.data)) {
+          hasMoreExpenses = false;
+        } else {
+          const pagination = expensesRes.data.pagination;
+          hasMoreExpenses = pagination && expensesPage < pagination.totalPages;
+        }
+        expensesPage++;
+      }
+
+      const receipts: Transaction[] = allReceipts.map((r: any) => ({
         id: r.id,
         type: 'receipt' as const,
         description: r.description,
@@ -81,7 +141,7 @@ export function FinancialTimeline() {
         isRecurring: r.isRecurring,
       }));
 
-      const expenses: Transaction[] = expensesRes.data.map((e: any) => ({
+      const expenses: Transaction[] = allExpenses.map((e: any) => ({
         id: e.id,
         type: 'expense' as const,
         description: e.description,

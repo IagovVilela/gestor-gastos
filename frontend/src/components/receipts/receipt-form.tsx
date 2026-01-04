@@ -34,6 +34,7 @@ const receiptSchema = z.object({
   ),
   date: z.string().min(1, 'Data é obrigatória'),
   categoryId: z.string().optional(),
+  bankId: z.string().optional(),
   isRecurring: z.boolean().optional(),
   recurringType: z.enum(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']).optional(),
   notes: z.string().optional(),
@@ -54,6 +55,12 @@ interface Category {
   type: string;
 }
 
+interface Bank {
+  id: string;
+  name: string;
+  color?: string;
+}
+
 export function ReceiptForm({
   open,
   onOpenChange,
@@ -62,6 +69,7 @@ export function ReceiptForm({
 }: ReceiptFormProps) {
   const { toast } = useToast();
   const [categories, setCategories] = useState<Category[]>([]);
+  const [banks, setBanks] = useState<Bank[]>([]);
   const [loading, setLoading] = useState(false);
 
   const {
@@ -84,6 +92,7 @@ export function ReceiptForm({
   useEffect(() => {
     if (open) {
       fetchCategories();
+      fetchBanks();
       if (receiptId) {
         fetchReceipt();
       } else {
@@ -92,6 +101,7 @@ export function ReceiptForm({
           amount: '',
           date: format(new Date(), 'yyyy-MM-dd'),
           categoryId: '',
+          bankId: '',
           isRecurring: false,
           recurringType: undefined,
           notes: '',
@@ -111,6 +121,15 @@ export function ReceiptForm({
     }
   };
 
+  const fetchBanks = async () => {
+    try {
+      const response = await api.get('/banks');
+      setBanks(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar bancos:', error);
+    }
+  };
+
   const fetchReceipt = async () => {
     try {
       const response = await api.get(`/receipts/${receiptId}`);
@@ -120,6 +139,7 @@ export function ReceiptForm({
         amount: String(receipt.amount),
         date: format(new Date(receipt.date), 'yyyy-MM-dd'),
         categoryId: receipt.categoryId || '',
+        bankId: receipt.bankId || '',
         isRecurring: receipt.isRecurring || false,
         recurringType: receipt.recurringType,
         notes: receipt.notes || '',
@@ -227,24 +247,46 @@ export function ReceiptForm({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="categoryId">Categoria</Label>
-            <Select
-              value={watch('categoryId') || 'none'}
-              onValueChange={(value) => setValue('categoryId', value === 'none' ? '' : value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sem categoria</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="categoryId">Categoria</Label>
+              <Select
+                value={watch('categoryId') || 'none'}
+                onValueChange={(value) => setValue('categoryId', value === 'none' ? '' : value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem categoria</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="bankId">Banco</Label>
+              <Select
+                value={watch('bankId') || 'none'}
+                onValueChange={(value) => setValue('bankId', value === 'none' ? '' : value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um banco" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem banco</SelectItem>
+                  {banks.map((bank) => (
+                    <SelectItem key={bank.id} value={bank.id}>
+                      {bank.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="flex items-center space-x-2">

@@ -47,3 +47,4 @@ Write-Host "✅ Jobs finalizados" -ForegroundColor Green
 
 Write-Host "`n✅ Todos os servidores foram parados!`n" -ForegroundColor Green
 
+

@@ -9,6 +9,10 @@ import { ExpensesModule } from './expenses/expenses.module';
 import { GoalsModule } from './goals/goals.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { UploadModule } from './upload/upload.module';
+import { SettingsModule } from './settings/settings.module';
+import { BanksModule } from './banks/banks.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { CreditCardBillsModule } from './credit-card-bills/credit-card-bills.module';
 
 @Module({
   imports: [
@@ -24,6 +28,10 @@ import { UploadModule } from './upload/upload.module';
     GoalsModule,
     AlertsModule,
     UploadModule,
+    SettingsModule,
+    BanksModule,
+    DashboardModule,
+    CreditCardBillsModule,
   ],
   controllers: [],
   providers: [],

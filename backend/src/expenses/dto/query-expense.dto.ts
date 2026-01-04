@@ -1,38 +1,64 @@
-import { IsOptional, IsDateString, IsString, IsBoolean } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsOptional, IsString, IsBoolean, IsInt, Min, Max, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
+import { ApiProperty } from '@nestjs/swagger';
+import { PaymentMethod } from '@prisma/client';
 
 export class QueryExpenseDto {
-  @ApiProperty({ example: '2024-01-01', description: 'Data inicial (filtro)', required: false })
-  @IsDateString()
+  @ApiProperty({ required: false, description: 'Data inicial (YYYY-MM-DD)' })
   @IsOptional()
+  @IsString()
   startDate?: string;
 
-  @ApiProperty({ example: '2024-01-31', description: 'Data final (filtro)', required: false })
-  @IsDateString()
+  @ApiProperty({ required: false, description: 'Data final (YYYY-MM-DD)' })
   @IsOptional()
+  @IsString()
   endDate?: string;
 
-  @ApiProperty({ example: null, description: 'ID da categoria (filtro)', required: false })
-  @IsString()
+  @ApiProperty({ required: false, description: 'ID da categoria' })
   @IsOptional()
+  @IsString()
   categoryId?: string;
 
-  @ApiProperty({ example: false, description: 'Filtrar apenas gastos fixos', required: false })
-  @IsBoolean()
+  @ApiProperty({ required: false, description: 'Se é gasto fixo' })
   @IsOptional()
+  @IsBoolean()
   @Type(() => Boolean)
   isFixed?: boolean;
 
-  @ApiProperty({ example: 'supermercado', description: 'Buscar por descrição', required: false })
-  @IsString()
+  @ApiProperty({ required: false, description: 'Busca por descrição' })
   @IsOptional()
+  @IsString()
   search?: string;
 
-  @ApiProperty({ example: false, description: 'Filtrar apenas despesas recorrentes', required: false })
-  @IsBoolean()
+  @ApiProperty({ required: false, description: 'Se é recorrente' })
   @IsOptional()
+  @IsBoolean()
   @Type(() => Boolean)
   isRecurring?: boolean;
-}
 
+  @ApiProperty({ required: false, description: 'Página (padrão: 1)', default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiProperty({ required: false, description: 'Itens por página (padrão: 20, máximo: 100)', default: 20 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number;
+
+  @ApiProperty({ required: false, description: 'Forma de pagamento' })
+  @IsOptional()
+  @IsEnum(PaymentMethod)
+  paymentMethod?: PaymentMethod;
+
+  @ApiProperty({ required: false, description: 'Apenas lançamentos futuros (paymentDate > hoje)' })
+  @IsOptional()
+  @IsBoolean()
+  @Type(() => Boolean)
+  futureOnly?: boolean;
+}

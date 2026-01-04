@@ -59,11 +59,19 @@ export function ReceiptsByCategoryChart() {
     fetchData();
   }, []);
 
-  const chartData = data.map((item) => ({
-    name: item.category?.name || 'Sem categoria',
-    value: Number(item.total),
-    count: item.count,
-  }));
+  // Calcular total para mostrar porcentagens
+  const total = data.reduce((sum, item) => sum + Number(item.total), 0);
+
+  const chartData = data.map((item) => {
+    const value = Number(item.total);
+    const percentage = total > 0 ? (value / total) * 100 : 0;
+    return {
+      name: item.category?.name || 'Sem categoria',
+      value,
+      count: item.count,
+      percentage: percentage.toFixed(1),
+    };
+  });
 
   if (loading) {
     return (
@@ -97,14 +105,18 @@ export function ReceiptsByCategoryChart() {
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
+      const data = payload[0].payload;
       return (
         <div className="rounded-lg border bg-background p-3 shadow-sm">
-          <p className="font-medium">{payload[0].name}</p>
+          <p className="font-medium">{data.name}</p>
           <p className="text-sm text-green-600 font-semibold">
-            {formatCurrency(payload[0].value)}
+            {formatCurrency(data.value)}
           </p>
           <p className="text-xs text-muted-foreground">
-            {payload[0].payload.count} registro(s)
+            {data.percentage}% do total
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {data.count} registro(s)
           </p>
         </div>
       );
@@ -119,6 +131,12 @@ export function ReceiptsByCategoryChart() {
           <CardTitle>Receitas por Categoria</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 text-center">
+            <p className="text-2xl font-bold text-green-600">
+              {formatCurrency(total)}
+            </p>
+            <p className="text-sm text-muted-foreground">Total de Receitas</p>
+          </div>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
@@ -126,10 +144,11 @@ export function ReceiptsByCategoryChart() {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }) =>
-                  `${name} ${(percent * 100).toFixed(0)}%`
-                }
-                outerRadius={80}
+                label={({ name, percent }) => {
+                  const percentage = (percent * 100).toFixed(1);
+                  return `${name}\n${percentage}%`;
+                }}
+                outerRadius={100}
                 fill="#22c55e"
                 dataKey="value"
               >

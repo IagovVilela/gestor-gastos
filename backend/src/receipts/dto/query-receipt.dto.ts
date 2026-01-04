@@ -1,32 +1,46 @@
-import { IsOptional, IsDateString, IsString, IsBoolean } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsOptional, IsString, IsBoolean, IsInt, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class QueryReceiptDto {
-  @ApiProperty({ example: '2024-01-01', description: 'Data inicial (filtro)', required: false })
-  @IsDateString()
+  @ApiProperty({ required: false, description: 'Data inicial (YYYY-MM-DD)' })
   @IsOptional()
+  @IsString()
   startDate?: string;
 
-  @ApiProperty({ example: '2024-01-31', description: 'Data final (filtro)', required: false })
-  @IsDateString()
+  @ApiProperty({ required: false, description: 'Data final (YYYY-MM-DD)' })
   @IsOptional()
+  @IsString()
   endDate?: string;
 
-  @ApiProperty({ example: null, description: 'ID da categoria (filtro)', required: false })
-  @IsString()
+  @ApiProperty({ required: false, description: 'ID da categoria' })
   @IsOptional()
+  @IsString()
   categoryId?: string;
 
-  @ApiProperty({ example: 'salário', description: 'Buscar por descrição', required: false })
-  @IsString()
+  @ApiProperty({ required: false, description: 'Busca por descrição' })
   @IsOptional()
+  @IsString()
   search?: string;
 
-  @ApiProperty({ example: false, description: 'Filtrar apenas receitas recorrentes', required: false })
-  @IsBoolean()
+  @ApiProperty({ required: false, description: 'Se é recorrente' })
   @IsOptional()
+  @IsBoolean()
   @Type(() => Boolean)
   isRecurring?: boolean;
-}
 
+  @ApiProperty({ required: false, description: 'Página (padrão: 1)', default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiProperty({ required: false, description: 'Itens por página (padrão: 20, máximo: 100)', default: 20 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number;
+}

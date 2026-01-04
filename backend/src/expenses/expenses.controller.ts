@@ -60,6 +60,13 @@ export class ExpensesController {
     return this.expensesService.getByCategory(user.id, parseInt(year), parseInt(month));
   }
 
+  @Get('credit-card')
+  @ApiOperation({ summary: 'Obter despesas do cartão de crédito (fatura)' })
+  @ApiResponse({ status: 200, description: 'Despesas do cartão de crédito' })
+  getCreditCardExpenses(@CurrentUser() user: { id: string }) {
+    return this.expensesService.getCreditCardExpenses(user.id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Obter despesa por ID' })
   @ApiResponse({ status: 200, description: 'Despesa encontrada' })
@@ -86,4 +93,5 @@ export class ExpensesController {
     return this.expensesService.remove(id, user.id);
   }
 }
+
 

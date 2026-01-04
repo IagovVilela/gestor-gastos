@@ -1,6 +1,6 @@
 import { IsString, IsNotEmpty, IsNumber, IsDateString, IsOptional, IsBoolean, IsEnum, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { RecurringType } from '@prisma/client';
+import { RecurringType, PaymentMethod } from '@prisma/client';
 import { Type } from 'class-transformer';
 
 export class CreateExpenseDto {
@@ -15,10 +15,20 @@ export class CreateExpenseDto {
   @Type(() => Number)
   amount: number;
 
-  @ApiProperty({ example: '2024-01-15T00:00:00.000Z', description: 'Data da despesa' })
+  @ApiProperty({ example: '2024-01-15T00:00:00.000Z', description: 'Data do lançamento (quando foi registrado)' })
   @IsDateString()
   @IsNotEmpty()
   date: string;
+
+  @ApiProperty({ example: '2024-01-15T00:00:00.000Z', description: 'Data em que será pago (lançamento futuro). Se não informado, usa a data do lançamento', required: false })
+  @IsDateString()
+  @IsOptional()
+  paymentDate?: string;
+
+  @ApiProperty({ enum: PaymentMethod, example: PaymentMethod.DEBIT, description: 'Forma de pagamento', required: false })
+  @IsEnum(PaymentMethod)
+  @IsOptional()
+  paymentMethod?: PaymentMethod;
 
   @ApiProperty({ example: null, description: 'ID da categoria', required: false })
   @IsString()
@@ -49,5 +59,10 @@ export class CreateExpenseDto {
   @IsString()
   @IsOptional()
   receiptImageUrl?: string;
+
+  @ApiProperty({ example: null, description: 'ID do banco de onde a despesa foi paga', required: false })
+  @IsString()
+  @IsOptional()
+  bankId?: string;
 }
 

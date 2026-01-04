@@ -40,3 +40,4 @@ Write-Host ""
 Write-Host "📋 Para ver os logs de erro:" -ForegroundColor Cyan
 Write-Host "   Execute o comando acima e verifique a saída no terminal" -ForegroundColor Yellow
 
+

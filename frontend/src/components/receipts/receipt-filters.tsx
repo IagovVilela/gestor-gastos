@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -31,7 +31,26 @@ export interface ReceiptFilters {
 
 export function ReceiptFilters({ onFilterChange, categories }: ReceiptFiltersProps) {
   const [filters, setFilters] = useState<ReceiptFilters>({});
+  const [searchValue, setSearchValue] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const filtersRef = useRef(filters);
+
+  // Manter ref atualizado
+  filtersRef.current = filters;
+
+  // Debounce para busca (aguarda 500ms após parar de digitar)
+  const debouncedSearchRef = useRef(
+    debounce((value: string) => {
+      const newFilters = { ...filtersRef.current, search: value || undefined };
+      setFilters(newFilters);
+      onFilterChange(newFilters);
+    }, 500)
+  );
+
+  const handleSearchChange = (value: string) => {
+    setSearchValue(value);
+    debouncedSearchRef.current(value);
+  };
 
   const handleFilterChange = (key: keyof ReceiptFilters, value: any) => {
     const newFilters = { ...filters, [key]: value };
@@ -40,6 +59,7 @@ export function ReceiptFilters({ onFilterChange, categories }: ReceiptFiltersPro
   };
 
   const clearFilters = () => {
+    setSearchValue('');
     const clearedFilters: ReceiptFilters = {};
     setFilters(clearedFilters);
     onFilterChange(clearedFilters);

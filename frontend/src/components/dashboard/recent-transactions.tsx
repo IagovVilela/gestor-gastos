@@ -32,19 +32,27 @@ export function RecentTransactions() {
         const [receiptsRes, expensesRes] = await Promise.all([
           api.get('/receipts', {
             params: {
-              startDate: startDate.toISOString(),
-              endDate: endDate.toISOString(),
+              startDate: startDate.toISOString().split('T')[0],
+              endDate: endDate.toISOString().split('T')[0],
+              limit: 100,
+              page: 1,
             },
           }),
           api.get('/expenses', {
             params: {
-              startDate: startDate.toISOString(),
-              endDate: endDate.toISOString(),
+              startDate: startDate.toISOString().split('T')[0],
+              endDate: endDate.toISOString().split('T')[0],
+              limit: 100,
+              page: 1,
             },
           }),
         ]);
 
-        const receipts: Transaction[] = receiptsRes.data.map((r: any) => ({
+        // Suportar formato antigo (array) e novo (objeto com paginação)
+        const receiptsData = Array.isArray(receiptsRes.data) ? receiptsRes.data : (receiptsRes.data.data || []);
+        const expensesData = Array.isArray(expensesRes.data) ? expensesRes.data : (expensesRes.data.data || []);
+
+        const receipts: Transaction[] = receiptsData.map((r: any) => ({
           id: r.id,
           description: r.description,
           amount: Number(r.amount),
@@ -53,7 +61,7 @@ export function RecentTransactions() {
           category: r.category,
         }));
 
-        const expenses: Transaction[] = expensesRes.data.map((e: any) => ({
+        const expenses: Transaction[] = expensesData.map((e: any) => ({
           id: e.id,
           description: e.description,
           amount: Number(e.amount),
@@ -164,4 +172,5 @@ export function RecentTransactions() {
     </Card>
   );
 }
+
 

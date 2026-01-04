@@ -4,8 +4,11 @@ import { AuthGuard } from '@/components/auth-guard';
 import { MainLayout } from '@/components/layout/main-layout';
 import { useAuthStore } from '@/store/auth-store';
 import { SummaryCards } from '@/components/dashboard/summary-cards';
-import { ExpensesByCategoryChart } from '@/components/dashboard/expenses-by-category-chart';
-import { ReceiptsByCategoryChart } from '@/components/dashboard/receipts-by-category-chart';
+import { ProjectedBalance } from '@/components/dashboard/projected-balance';
+import { BankBalances } from '@/components/dashboard/bank-balances';
+import { CreditCardBill } from '@/components/dashboard/credit-card-bill';
+import { ReceiptsChart } from '@/components/dashboard/receipts-chart';
+import { ExpensesChart } from '@/components/dashboard/expenses-chart';
 import { RecentTransactions } from '@/components/dashboard/recent-transactions';
 import { MonthlyComparison } from '@/components/dashboard/monthly-comparison';
 import { SpendingTrends } from '@/components/dashboard/spending-trends';
@@ -34,12 +37,22 @@ export default function DashboardPage() {
 
           <SummaryCards />
 
+          <ProjectedBalance />
+
+          <BankBalances />
+
+          <StaggerContainer>
+            <StaggerItem>
+              <CreditCardBill />
+            </StaggerItem>
+          </StaggerContainer>
+
           <StaggerContainer className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
             <StaggerItem>
-              <ReceiptsByCategoryChart />
+              <ReceiptsChart />
             </StaggerItem>
             <StaggerItem>
-              <ExpensesByCategoryChart />
+              <ExpensesChart />
             </StaggerItem>
           </StaggerContainer>
 

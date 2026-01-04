@@ -15,6 +15,8 @@ import {
   Menu,
   X,
   History,
+  Building2,
+  FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -22,6 +24,8 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Receitas', href: '/receipts', icon: Receipt },
   { name: 'Despesas', href: '/expenses', icon: CreditCard },
+  { name: 'Bancos', href: '/banks', icon: Building2 },
+  { name: 'Faturas', href: '/credit-card-bills', icon: FileText },
   { name: 'Categorias', href: '/categories', icon: FolderTree },
   { name: 'Metas', href: '/goals', icon: Target },
   { name: 'Histórico', href: '/history', icon: History },

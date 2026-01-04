@@ -27,6 +27,9 @@ model User {
   expenses      Expense[]
   goals         Goal[]
   alerts        Alert[]
+  settings      UserSettings?
+  banks         Bank[]
+  creditCardBills CreditCardBill[] // Faturas de cartão de crédito
 
   @@map("users")
 }
@@ -74,9 +77,11 @@ model Receipt {
   amount        Decimal   @db.Decimal(10, 2)
   date          DateTime
   categoryId    String?   @map("category_id")
+  bankId        String?   @map("bank_id") // Banco onde a receita foi recebida
   userId        String    @map("user_id")
   isRecurring   Boolean   @default(false) @map("is_recurring")
   recurringType RecurringType? @map("recurring_type") // MONTHLY, WEEKLY, etc
+  paymentSchedule String? @db.Text @map("payment_schedule") // JSON com distribuição de pagamento (ex: [{"day": 15, "percentage": 40}, {"day": 31, "percentage": 60}])
   notes         String?   @db.Text
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
@@ -84,11 +89,13 @@ model Receipt {
   // Relacionamentos
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  bank          Bank?     @relation(fields: [bankId], references: [id], onDelete: SetNull)
 
   @@map("receipts")
   @@index([userId])
   @@index([date])
   @@index([categoryId])
+  @@index([bankId])
 }
 
 enum RecurringType {
@@ -98,6 +105,15 @@ enum RecurringType {
   YEARLY
 }
 
+enum PaymentMethod {
+  CREDIT         // Cartão de Crédito
+  DEBIT          // Cartão de Débito
+  CASH           // Dinheiro
+  PIX            // PIX
+  BANK_TRANSFER  // Transferência Bancária
+  OTHER          // Outros
+}
+
 // ============================================
 // MODELO: Expense (Despesa)
 // ============================================
@@ -105,8 +121,11 @@ model Expense {
   id            String    @id @default(uuid())
   description   String
   amount        Decimal   @db.Decimal(10, 2)
-  date          DateTime
+  date          DateTime  // Data do lançamento (quando foi registrado)
+  paymentDate   DateTime? @map("payment_date") // Data em que será/será pago (lançamento futuro)
+  paymentMethod PaymentMethod? @map("payment_method") // Forma de pagamento
   categoryId    String?   @map("category_id")
+  bankId        String?   @map("bank_id") // Banco de onde a despesa foi paga
   userId        String    @map("user_id")
   isRecurring   Boolean   @default(false) @map("is_recurring")
   recurringType RecurringType? @map("recurring_type")
@@ -119,11 +138,15 @@ model Expense {
   // Relacionamentos
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  bank          Bank?     @relation(fields: [bankId], references: [id], onDelete: SetNull)
 
   @@map("expenses")
   @@index([userId])
   @@index([date])
+  @@index([paymentDate])
+  @@index([paymentMethod])
   @@index([categoryId])
+  @@index([bankId])
 }
 
 // ============================================
@@ -198,4 +221,107 @@ enum AlertSeverity {
   WARNING   // Aviso
   ERROR     // Erro
   SUCCESS   // Sucesso
+}
+
+// ============================================
+// MODELO: Bank (Banco/Conta Bancária)
+// ============================================
+model Bank {
+  id            String    @id @default(uuid())
+  name          String    // Nome do banco (ex: "Nubank", "Banco do Brasil")
+  type          BankType  @default(CURRENT_ACCOUNT) @map("type") // Tipo de conta
+  balance       Decimal   @default(0) @db.Decimal(10, 2) // Saldo atual
+  isPrimary     Boolean   @default(false) @map("is_primary") // Banco principal
+  color         String?   // Cor para identificação visual
+  icon          String?   // Ícone para identificação visual
+  userId        String    @map("user_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  receipts      Receipt[]
+  expenses      Expense[]
+  creditCardBills CreditCardBill[] // Faturas de cartão associadas a este banco
+
+  @@map("banks")
+  @@index([userId])
+  @@index([isPrimary])
+}
+
+// ============================================
+// MODELO: CreditCardBill (Fatura do Cartão de Crédito)
+// ============================================
+model CreditCardBill {
+  id              String    @id @default(uuid())
+  description     String    // Descrição da fatura (ex: "Fatura Nubank - Janeiro 2026")
+  closingDate     DateTime  @map("closing_date") // Data de fechamento da fatura
+  dueDate         DateTime  @map("due_date") // Data de vencimento da fatura
+  bestPurchaseDate DateTime? @map("best_purchase_date") // Melhor data para fazer compras (para otimizar)
+  totalAmount     Decimal   @default(0) @db.Decimal(10, 2) @map("total_amount") // Total da fatura (calculado automaticamente)
+  paidAmount      Decimal   @default(0) @db.Decimal(10, 2) @map("paid_amount") // Valor já pago
+  isPaid          Boolean   @default(false) @map("is_paid") // Se a fatura foi paga
+  bankId          String?   @map("bank_id") // Banco do cartão
+  userId          String    @map("user_id")
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bank            Bank?     @relation(fields: [bankId], references: [id], onDelete: SetNull)
+
+  @@map("credit_card_bills")
+  @@index([userId])
+  @@index([closingDate])
+  @@index([dueDate])
+  @@index([bankId])
+}
+
+enum BankType {
+  SALARY_ACCOUNT    // Conta Salário
+  CURRENT_ACCOUNT  // Conta Corrente
+  SAVINGS_ACCOUNT  // Conta Poupança
+  INVESTMENT       // Conta Investimento
+  CREDIT_CARD      // Cartão de Crédito
+  DIGITAL_WALLET   // Carteira Digital
+  OTHER            // Outros
+}
+
+// ============================================
+// MODELO: UserSettings (Configurações do Usuário)
+// ============================================
+model UserSettings {
+  id                    String    @id @default(uuid())
+  userId                String    @unique @map("user_id")
+  
+  // Preferências Financeiras
+  currency              String    @default("BRL") // Moeda padrão
+  dateFormat            String    @default("DD/MM/YYYY") @map("date_format")
+  numberFormat          String    @default("pt-BR") @map("number_format")
+  firstDayOfWeek        Int       @default(0) @map("first_day_of_week") // 0 = Domingo, 1 = Segunda
+  
+  // Notificações
+  emailNotifications    Boolean   @default(true) @map("email_notifications")
+  budgetAlerts          Boolean   @default(true) @map("budget_alerts")
+  goalAlerts            Boolean   @default(true) @map("goal_alerts")
+  recurringPaymentAlerts Boolean  @default(true) @map("recurring_payment_alerts")
+  reportFrequency       String    @default("MONTHLY") @map("report_frequency") // DAILY, WEEKLY, MONTHLY, NEVER
+  
+  // Interface
+  theme                 String    @default("system") // light, dark, system
+  language              String    @default("pt-BR")
+  
+  // Privacidade e Segurança
+  sessionTimeout        Int       @default(30) @map("session_timeout") // minutos
+  requirePasswordForSensitiveActions Boolean @default(false) @map("require_password_for_sensitive_actions")
+  
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+  @@index([userId])
 }

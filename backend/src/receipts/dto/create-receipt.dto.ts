@@ -1,7 +1,8 @@
-import { IsString, IsNotEmpty, IsNumber, IsDateString, IsOptional, IsBoolean, IsEnum, Min } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsDateString, IsOptional, IsBoolean, IsEnum, Min, ValidateNested } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { RecurringType } from '@prisma/client';
 import { Type } from 'class-transformer';
+import { PaymentScheduleDto } from './payment-schedule.dto';
 
 export class CreateReceiptDto {
   @ApiProperty({ example: 'Salário', description: 'Descrição da receita' })
@@ -39,5 +40,17 @@ export class CreateReceiptDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @ApiProperty({ example: null, description: 'ID do banco onde a receita foi recebida', required: false })
+  @IsString()
+  @IsOptional()
+  bankId?: string;
+
+  @ApiProperty({ type: PaymentScheduleDto, description: 'Distribuição de pagamento para receitas mensais (ex: 40% dia 15, 60% último dia)', required: false })
+  @ValidateNested()
+  @Type(() => PaymentScheduleDto)
+  @IsOptional()
+  paymentSchedule?: PaymentScheduleDto;
 }
+
 

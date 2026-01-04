@@ -8,7 +8,7 @@ import { ExpenseFilters } from './expense-filters';
 import api from '@/lib/api';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Pencil, Trash2, ArrowDownCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, ArrowDownCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import {
@@ -46,6 +46,12 @@ export function ExpenseList() {
   const [editingExpense, setEditingExpense] = useState<string | undefined>();
   const [deletingExpense, setDeletingExpense] = useState<string | undefined>();
   const [filters, setFilters] = useState<import('./expense-filters').ExpenseFilters>({});
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 0,
+  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -54,7 +60,7 @@ export function ExpenseList() {
   }, []);
 
   useEffect(() => {
-    fetchExpenses();
+    fetchExpenses(1); // Resetar para página 1 quando filtros mudarem
   }, [filters]);
 
   const fetchCategories = async () => {
@@ -68,17 +74,27 @@ export function ExpenseList() {
     }
   };
 
-  const fetchExpenses = async () => {
+  const fetchExpenses = async (page = 1) => {
     try {
       setLoading(true);
-      const params: any = {};
+      const params: any = {
+        page,
+        limit: pagination.limit,
+      };
       Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== '' && key !== 'page') {
           params[key] = value;
         }
       });
       const response = await api.get('/expenses', { params });
-      setExpenses(response.data);
+      
+      // Suportar formato antigo (array) e novo (objeto com paginação)
+      if (Array.isArray(response.data)) {
+        setExpenses(response.data);
+      } else {
+        setExpenses(response.data.data || []);
+        setPagination(response.data.pagination || pagination);
+      }
     } catch (error) {
       toast({
         title: 'Erro',
@@ -220,6 +236,35 @@ export function ExpenseList() {
               ))}
             </div>
           )}
+
+          {/* Paginação */}
+          {pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                Mostrando {((pagination.page - 1) * pagination.limit) + 1} a {Math.min(pagination.page * pagination.limit, pagination.total)} de {pagination.total} despesas
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchExpenses(pagination.page - 1)}
+                  disabled={pagination.page === 1 || loading}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchExpenses(pagination.page + 1)}
+                  disabled={pagination.page >= pagination.totalPages || loading}
+                >
+                  Próxima
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -230,7 +275,7 @@ export function ExpenseList() {
           if (!open) setEditingExpense(undefined);
         }}
         onSuccess={() => {
-          fetchExpenses();
+          fetchExpenses(pagination.page);
           setFormOpen(false);
           setEditingExpense(undefined);
         }}

@@ -55,3 +55,4 @@ backend/prisma/migrations/*.sql
 # PowerShell
 *.ps1.log
 
+
