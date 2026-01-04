@@ -22,11 +22,11 @@ export default function DashboardPage() {
   return (
     <AuthGuard>
       <MainLayout>
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           <FadeIn>
             <div>
-              <h1 className="text-3xl font-bold">Dashboard</h1>
-              <p className="text-muted-foreground">
+              <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">
                 Bem-vindo, {user?.name}! • {currentMonth}
               </p>
             </div>
@@ -34,7 +34,7 @@ export default function DashboardPage() {
 
           <SummaryCards />
 
-          <StaggerContainer className="grid gap-6 md:grid-cols-2">
+          <StaggerContainer className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
             <StaggerItem>
               <ReceiptsByCategoryChart />
             </StaggerItem>
@@ -49,7 +49,7 @@ export default function DashboardPage() {
             </StaggerItem>
           </StaggerContainer>
 
-          <StaggerContainer className="grid gap-6 md:grid-cols-2">
+          <StaggerContainer className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
             <StaggerItem>
               <MonthlyComparison />
             </StaggerItem>

@@ -25,6 +25,8 @@ import {
 import api from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { ReceiptUpload } from './receipt-upload';
+import { Label } from '@/components/ui/label';
 
 const expenseSchema = z.object({
   description: z.string().min(1, 'Descrição é obrigatória'),
@@ -38,6 +40,7 @@ const expenseSchema = z.object({
   recurringType: z.enum(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']).optional(),
   isFixed: z.boolean().optional(),
   notes: z.string().optional(),
+  receiptImageUrl: z.string().optional(),
 });
 
 type ExpenseFormData = z.infer<typeof expenseSchema>;
@@ -127,6 +130,7 @@ export function ExpenseForm({
         isFixed: expense.isFixed || false,
         recurringType: expense.recurringType,
         notes: expense.notes || '',
+        receiptImageUrl: expense.receiptImageUrl || '',
       });
     } catch (error) {
       toast({
@@ -195,6 +199,7 @@ export function ExpenseForm({
               id="description"
               {...register('description')}
               placeholder="Ex: Supermercado"
+              className="w-full"
             />
             {errors.description && (
               <p className="text-sm text-destructive">
@@ -299,6 +304,14 @@ export function ExpenseForm({
               id="notes"
               {...register('notes')}
               placeholder="Notas adicionais (opcional)"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <ReceiptUpload
+              value={watch('receiptImageUrl')}
+              onChange={(url) => setValue('receiptImageUrl', url || '')}
+              disabled={loading}
             />
           </div>
 

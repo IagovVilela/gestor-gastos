@@ -112,6 +112,7 @@ model Expense {
   recurringType RecurringType? @map("recurring_type")
   isFixed       Boolean   @default(false) @map("is_fixed") // Gasto fixo ou variável
   notes         String?   @db.Text
+  receiptImageUrl String? @map("receipt_image_url") // URL da imagem do comprovante
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 

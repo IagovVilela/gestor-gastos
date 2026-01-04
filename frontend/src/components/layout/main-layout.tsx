@@ -14,8 +14,10 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 flex-col overflow-hidden lg:pl-64">
         <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
         
-        <main className="flex-1 overflow-y-auto bg-background p-4 lg:p-6">
-          {children}
+        <main className="flex-1 overflow-y-auto bg-background p-3 sm:p-4 lg:p-6">
+          <div className="max-w-7xl mx-auto w-full">
+            {children}
+          </div>
         </main>
       </div>
     </div>

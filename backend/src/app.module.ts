@@ -8,6 +8,7 @@ import { ReceiptsModule } from './receipts/receipts.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { GoalsModule } from './goals/goals.module';
 import { AlertsModule } from './alerts/alerts.module';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { AlertsModule } from './alerts/alerts.module';
     ExpensesModule,
     GoalsModule,
     AlertsModule,
+    UploadModule,
   ],
   controllers: [],
   providers: [],

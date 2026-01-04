@@ -44,5 +44,10 @@ export class CreateExpenseDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @ApiProperty({ example: '/uploads/receipts/abc123.jpg', description: 'URL da imagem do comprovante', required: false })
+  @IsString()
+  @IsOptional()
+  receiptImageUrl?: string;
 }
 

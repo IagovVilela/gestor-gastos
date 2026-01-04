@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Plus, Pencil, Trash2, ArrowDownCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,6 +35,7 @@ interface Expense {
   isFixed: boolean;
   recurringType?: string;
   notes?: string;
+  receiptImageUrl?: string;
 }
 
 export function ExpenseList() {
@@ -137,9 +139,9 @@ export function ExpenseList() {
       <ExpenseFilters onFilterChange={handleFilterChange} categories={categories} />
       
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Despesas</CardTitle>
-          <Button onClick={() => setFormOpen(true)}>
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <CardTitle className="text-xl sm:text-2xl">Despesas</CardTitle>
+          <Button onClick={() => setFormOpen(true)} className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             Nova Despesa
           </Button>
@@ -162,12 +164,12 @@ export function ExpenseList() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="flex items-center justify-between border rounded-lg p-4 hover:shadow-md transition-shadow"
+                  className="flex flex-col sm:flex-row items-start sm:items-center justify-between border rounded-lg p-4 hover:shadow-md transition-shadow gap-4"
                 >
-                  <div className="flex items-center gap-4 flex-1">
-                    <ArrowDownCircle className="h-5 w-5 text-red-500" />
-                    <div className="flex-1">
-                      <p className="font-medium">{expense.description}</p>
+                  <div className="flex items-start sm:items-center gap-4 flex-1 w-full sm:w-auto min-w-0">
+                    <ArrowDownCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-1 sm:mt-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{expense.description}</p>
                       <p className="text-sm text-muted-foreground">
                         {format(new Date(expense.date), "dd 'de' MMM 'de' yyyy", {
                           locale: ptBR,
@@ -176,14 +178,26 @@ export function ExpenseList() {
                         {expense.isFixed && ` • Fixo`}
                         {expense.isRecurring && ` • Recorrente`}
                       </p>
+                      {expense.receiptImageUrl && (
+                        <div className="mt-2">
+                          <div className="relative w-16 h-16 rounded-md overflow-hidden border">
+                            <Image
+                              src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${expense.receiptImageUrl}`}
+                              alt="Comprovante"
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-red-600">
+                    <div className="text-right sm:text-left flex-shrink-0">
+                      <p className="font-semibold text-red-600 text-lg sm:text-base">
                         {formatCurrency(expense.amount)}
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-2 ml-4">
+                  <div className="flex gap-2 w-full sm:w-auto justify-end sm:justify-start">
                     <Button
                       variant="ghost"
                       size="icon"
