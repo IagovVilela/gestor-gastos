@@ -26,7 +26,6 @@ import api from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ReceiptUpload } from './receipt-upload';
-import { Label } from '@/components/ui/label';
 
 const expenseSchema = z.object({
   description: z.string().min(1, 'Descrição é obrigatória'),
