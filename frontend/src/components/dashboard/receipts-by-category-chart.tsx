@@ -44,8 +44,13 @@ export function ReceiptsByCategoryChart() {
 
         const response = await api.get(`/receipts/by-category/${year}/${month}`);
         setData(response.data);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Erro ao carregar receitas por categoria:', error);
+        // Se for 404, pode ser que o endpoint não exista ou o backend não esteja rodando
+        if (error.response?.status === 404) {
+          console.warn('Endpoint /receipts/by-category não encontrado. Verifique se o backend está rodando.');
+        }
+        setData([]); // Define dados vazios em caso de erro
       } finally {
         setLoading(false);
       }

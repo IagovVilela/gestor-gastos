@@ -243,14 +243,14 @@ export function GoalForm({
             <div className="space-y-2">
               <Label htmlFor="categoryId">Categoria</Label>
               <Select
-                value={watch('categoryId') || ''}
-                onValueChange={(value) => setValue('categoryId', value)}
+                value={watch('categoryId') || 'none'}
+                onValueChange={(value) => setValue('categoryId', value === 'none' ? '' : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma categoria" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sem categoria</SelectItem>
+                  <SelectItem value="none">Sem categoria</SelectItem>
                   {categories.map((category) => (
                     <SelectItem key={category.id} value={category.id}>
                       {category.name}

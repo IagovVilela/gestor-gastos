@@ -169,16 +169,16 @@ export function ExpenseFilters({ onFilterChange, categories }: ExpenseFiltersPro
               <div className="space-y-2">
                 <Label>Categoria</Label>
                 <Select
-                  value={filters.categoryId || ''}
+                  value={filters.categoryId || 'all'}
                   onValueChange={(value) =>
-                    handleFilterChange('categoryId', value || undefined)
+                    handleFilterChange('categoryId', value === 'all' ? undefined : value)
                   }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Todas as categorias" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todas as categorias</SelectItem>
+                    <SelectItem value="all">Todas as categorias</SelectItem>
                     {categories.map((category) => (
                       <SelectItem key={category.id} value={category.id}>
                         {category.name}
@@ -199,7 +199,7 @@ export function ExpenseFilters({ onFilterChange, categories }: ExpenseFiltersPro
                       ? 'recurring'
                       : filters.isRecurring === false
                       ? 'non-recurring'
-                      : ''
+                      : 'all'
                   }
                   onValueChange={(value) => {
                     if (value === 'fixed') {
@@ -224,7 +224,7 @@ export function ExpenseFilters({ onFilterChange, categories }: ExpenseFiltersPro
                     <SelectValue placeholder="Todos os tipos" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos os tipos</SelectItem>
+                    <SelectItem value="all">Todos os tipos</SelectItem>
                     <SelectItem value="fixed">Fixos</SelectItem>
                     <SelectItem value="variable">Variáveis</SelectItem>
                     <SelectItem value="recurring">Recorrentes</SelectItem>

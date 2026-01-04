@@ -212,14 +212,14 @@ export function CategoryForm({
             <div className="space-y-2">
               <Label htmlFor="parentId">Categoria Pai</Label>
               <Select
-                value={watch('parentId') || ''}
-                onValueChange={(value) => setValue('parentId', value)}
+                value={watch('parentId') || 'none'}
+                onValueChange={(value) => setValue('parentId', value === 'none' ? '' : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Nenhuma (categoria principal)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhuma</SelectItem>
+                  <SelectItem value="none">Nenhuma</SelectItem>
                   {categories.map((category) => (
                     <SelectItem key={category.id} value={category.id}>
                       {category.name}
