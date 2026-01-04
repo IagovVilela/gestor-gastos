@@ -1,0 +1,200 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// MODELO: User (Usuário)
+// ============================================
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  password      String
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  categories    Category[]
+  receipts      Receipt[]
+  expenses      Expense[]
+  goals         Goal[]
+  alerts        Alert[]
+
+  @@map("users")
+}
+
+// ============================================
+// MODELO: Category (Categoria)
+// ============================================
+model Category {
+  id            String    @id @default(uuid())
+  name          String
+  description   String?   @db.Text
+  type          CategoryType // RECEIPT ou EXPENSE
+  color         String?   // Cor para identificação visual
+  icon          String?   // Ícone para identificação visual
+  userId        String    @map("user_id")
+  parentId      String?   @map("parent_id") // Para subcategorias
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent        Category? @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  subcategories Category[] @relation("CategoryHierarchy")
+  receipts      Receipt[]
+  expenses      Expense[]
+  goals         Goal[]
+
+  @@map("categories")
+  @@index([userId])
+  @@index([parentId])
+}
+
+enum CategoryType {
+  RECEIPT  // Receita
+  EXPENSE  // Despesa
+  BOTH     // Ambos
+}
+
+// ============================================
+// MODELO: Receipt (Receita)
+// ============================================
+model Receipt {
+  id            String    @id @default(uuid())
+  description   String
+  amount        Decimal   @db.Decimal(10, 2)
+  date          DateTime
+  categoryId    String?   @map("category_id")
+  userId        String    @map("user_id")
+  isRecurring   Boolean   @default(false) @map("is_recurring")
+  recurringType RecurringType? @map("recurring_type") // MONTHLY, WEEKLY, etc
+  notes         String?   @db.Text
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@map("receipts")
+  @@index([userId])
+  @@index([date])
+  @@index([categoryId])
+}
+
+enum RecurringType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+// ============================================
+// MODELO: Expense (Despesa)
+// ============================================
+model Expense {
+  id            String    @id @default(uuid())
+  description   String
+  amount        Decimal   @db.Decimal(10, 2)
+  date          DateTime
+  categoryId    String?   @map("category_id")
+  userId        String    @map("user_id")
+  isRecurring   Boolean   @default(false) @map("is_recurring")
+  recurringType RecurringType? @map("recurring_type")
+  isFixed       Boolean   @default(false) @map("is_fixed") // Gasto fixo ou variável
+  notes         String?   @db.Text
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@map("expenses")
+  @@index([userId])
+  @@index([date])
+  @@index([categoryId])
+}
+
+// ============================================
+// MODELO: Goal (Meta Financeira)
+// ============================================
+model Goal {
+  id            String    @id @default(uuid())
+  title         String
+  description   String?   @db.Text
+  targetAmount  Decimal   @db.Decimal(10, 2) @map("target_amount")
+  currentAmount Decimal   @default(0) @db.Decimal(10, 2) @map("current_amount")
+  deadline      DateTime?
+  type          GoalType
+  categoryId    String?   @map("category_id") // Meta por categoria (opcional)
+  userId        String    @map("user_id")
+  isCompleted   Boolean   @default(false) @map("is_completed")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@map("goals")
+  @@index([userId])
+  @@index([categoryId])
+}
+
+enum GoalType {
+  SAVINGS      // Economia geral
+  EXPENSE_LIMIT // Limite de gastos
+  CATEGORY_LIMIT // Limite por categoria
+  MONTHLY_BUDGET // Orçamento mensal
+}
+
+// ============================================
+// MODELO: Alert (Alerta)
+// ============================================
+model Alert {
+  id            String    @id @default(uuid())
+  title         String
+  message       String    @db.Text
+  type          AlertType
+  severity      AlertSeverity @default(INFO)
+  userId        String    @map("user_id")
+  isRead        Boolean   @default(false) @map("is_read")
+  relatedGoalId String?   @map("related_goal_id") // Alerta relacionado a uma meta
+  relatedCategoryId String? @map("related_category_id") // Alerta relacionado a uma categoria
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("alerts")
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+enum AlertType {
+  BUDGET_EXCEEDED    // Orçamento excedido
+  GOAL_ACHIEVED      // Meta alcançada
+  GOAL_WARNING       // Aviso sobre meta
+  CATEGORY_LIMIT     // Limite de categoria
+  RECURRING_PAYMENT  // Pagamento recorrente
+  SYSTEM             // Alerta do sistema
+}
+
+enum AlertSeverity {
+  INFO      // Informativo
+  WARNING   // Aviso
+  ERROR     // Erro
+  SUCCESS   // Sucesso
+}
