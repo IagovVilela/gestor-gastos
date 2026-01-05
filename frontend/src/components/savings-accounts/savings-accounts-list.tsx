@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { SavingsAccountForm } from './savings-account-form';
 import { DepositWithdrawDialog } from './deposit-withdraw-dialog';
 import { SavingsEvolutionChart } from './savings-evolution-chart';
+import { SavingsTransactionsList } from './savings-transactions-list';
 import api from '@/lib/api';
 import { formatCurrency } from '@/lib/formatters';
 import { Plus, Pencil, Trash2, PiggyBank, TrendingUp, ArrowDown, ArrowUp, Target } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +25,16 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 
+const bankTypeLabels: Record<string, string> = {
+  SALARY_ACCOUNT: 'Conta Salário',
+  CURRENT_ACCOUNT: 'Conta Corrente',
+  SAVINGS_ACCOUNT: 'Conta Poupança',
+  INVESTMENT: 'Conta Investimento',
+  CREDIT_CARD: 'Cartão de Crédito',
+  DIGITAL_WALLET: 'Carteira Digital',
+  OTHER: 'Outros',
+};
+
 interface SavingsAccount {
   id: string;
   name: string;
@@ -34,6 +45,8 @@ interface SavingsAccount {
     id: string;
     name: string;
     color?: string;
+    type?: string;
+    balance?: number;
   } | null;
   goal?: {
     id: string;
@@ -63,6 +76,7 @@ export function SavingsAccountsList() {
   const [depositWithdrawOpen, setDepositWithdrawOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<string | undefined>();
   const [transactionType, setTransactionType] = useState<'deposit' | 'withdraw'>('deposit');
+  const [expandedAccount, setExpandedAccount] = useState<string | undefined>();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -128,6 +142,24 @@ export function SavingsAccountsList() {
     fetchSavingsAccounts();
   };
 
+  const handleRestoreBalances = async () => {
+    try {
+      const response = await api.post('/savings-accounts/restore-savings-balances');
+      toast({
+        title: 'Sucesso',
+        description: `Saldos restaurados! ${response.data.restored} conta(s) poupança foram corrigidas.`,
+      });
+      // Disparar evento para atualizar saldos em outros componentes
+      window.dispatchEvent(new CustomEvent('balanceUpdated'));
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error.response?.data?.message || 'Erro ao restaurar saldos',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const getProgress = (account: SavingsAccount) => {
     if (!account.targetAmount || account.targetAmount === 0) return 0;
     return Math.min((account.currentAmount / account.targetAmount) * 100, 100);
@@ -171,8 +203,16 @@ export function SavingsAccountsList() {
         </Card>
       </motion.div>
 
-      {/* Botão de Nova Poupança */}
-      <div className="flex justify-end">
+      {/* Botões de Ação */}
+      <div className="flex justify-between items-center">
+        <Button 
+          variant="outline" 
+          onClick={handleRestoreBalances}
+          className="text-yellow-600 border-yellow-600 hover:bg-yellow-50"
+        >
+          <TrendingUp className="h-4 w-4 mr-2" />
+          Restaurar Saldos de Contas Poupança
+        </Button>
         <Button onClick={() => setFormOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Nova Poupança
@@ -270,7 +310,19 @@ export function SavingsAccountsList() {
                     <div className="space-y-2 mb-4 flex-1">
                       {account.bank && (
                         <div className="flex items-center gap-2 text-sm">
-                          <Badge variant="outline">{account.bank.name}</Badge>
+                          <Badge variant="outline">
+                            {account.bank.name}
+                            {account.bank.type && (
+                              <span className="ml-1 text-muted-foreground">
+                                ({bankTypeLabels[account.bank.type] || account.bank.type})
+                              </span>
+                            )}
+                            {account.bank.balance !== undefined && (
+                              <span className="ml-1 text-muted-foreground">
+                                - {formatCurrency(account.bank.balance)}
+                              </span>
+                            )}
+                          </Badge>
                         </div>
                       )}
                       {account.goal && (
@@ -287,25 +339,35 @@ export function SavingsAccountsList() {
                     </div>
 
                     {/* Botões de Ação */}
-                    <div className="flex gap-2 mt-auto">
+                    <div className="flex flex-col gap-2 mt-auto">
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleOpenDeposit(account.id)}
+                        >
+                          <ArrowDown className="h-4 w-4 mr-1" />
+                          Depositar
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleOpenWithdraw(account.id)}
+                          disabled={account.currentAmount === 0}
+                        >
+                          <ArrowUp className="h-4 w-4 mr-1" />
+                          Retirar
+                        </Button>
+                      </div>
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
-                        className="flex-1"
-                        onClick={() => handleOpenDeposit(account.id)}
+                        className="w-full"
+                        onClick={() => setExpandedAccount(expandedAccount === account.id ? undefined : account.id)}
                       >
-                        <ArrowDown className="h-4 w-4 mr-1" />
-                        Depositar
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => handleOpenWithdraw(account.id)}
-                        disabled={account.currentAmount === 0}
-                      >
-                        <ArrowUp className="h-4 w-4 mr-1" />
-                        Retirar
+                        {expandedAccount === account.id ? 'Ocultar' : 'Ver'} Transações
                       </Button>
                     </div>
                   </CardContent>
@@ -315,6 +377,24 @@ export function SavingsAccountsList() {
           })}
         </div>
       )}
+
+      {/* Transações Expandidas - Fora do Grid */}
+      <AnimatePresence>
+        {expandedAccount && data?.savingsAccounts.find(a => a.id === expandedAccount) && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+            className="mt-6 overflow-hidden"
+          >
+            <SavingsTransactionsList
+              accountId={expandedAccount}
+              accountName={data.savingsAccounts.find(a => a.id === expandedAccount)?.name || ''}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Formulário */}
       <SavingsAccountForm

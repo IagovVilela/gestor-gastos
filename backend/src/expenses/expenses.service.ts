@@ -600,7 +600,14 @@ export class ExpensesService {
             bestPurchaseDate: currentMonthBill.bestPurchaseDate,
             totalAmount: Number(currentMonthBill.totalAmount),
             isPaid: currentMonthBill.isPaid,
-            bank: currentMonthBill.bank,
+            bank: currentMonthBill.bank
+              ? {
+                  id: currentMonthBill.bank.id,
+                  name: currentMonthBill.bank.name,
+                  balance: Number(currentMonthBill.bank.balance),
+                  type: currentMonthBill.bank.type,
+                }
+              : null,
           }
         : null,
     };

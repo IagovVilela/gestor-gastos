@@ -1,13 +1,16 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCreditCardBillDto } from './dto/create-credit-card-bill.dto';
 import { UpdateCreditCardBillDto } from './dto/update-credit-card-bill.dto';
+import { BanksService } from '../banks/banks.service';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class CreditCardBillsService {
   constructor(
     private prisma: PrismaService,
+    @Inject(forwardRef(() => BanksService))
+    private banksService?: BanksService,
   ) {}
 
   async create(userId: string, createCreditCardBillDto: CreateCreditCardBillDto) {
@@ -374,28 +377,279 @@ export class CreditCardBillsService {
     };
   }
 
-  async markAsPaid(id: string, userId: string) {
-    const bill = await this.findOne(id, userId);
+  async getAllCurrentMonthBills(userId: string) {
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+    // Buscar todas as faturas do mês atual
+    const allBills = await this.prisma.creditCardBill.findMany({
+      where: {
+        userId,
+        closingDate: {
+          gte: firstDayOfMonth,
+          lte: lastDayOfMonth,
+        },
+      },
+      include: {
+        bank: true,
+      },
+      orderBy: {
+        closingDate: 'desc',
+      },
+    });
+
+    // Agrupar por banco e pegar apenas a mais recente de cada banco
+    const billsByBank = new Map<string | null, any>();
     
-    return this.prisma.creditCardBill.update({
-      where: { id },
-      data: { isPaid: true },
+    for (const bill of allBills) {
+      const bankKey = bill.bankId || 'null';
+      if (!billsByBank.has(bankKey)) {
+        billsByBank.set(bankKey, bill);
+      }
+    }
+
+    // Processar cada fatura para calcular o total
+    const processedBills: any[] = [];
+    for (const bill of billsByBank.values()) {
+      const processedBill = await this.processBillTotal(bill, userId);
+      if (processedBill) {
+        processedBills.push(processedBill);
+      }
+    }
+
+    return processedBills;
+  }
+
+  private async processBillTotal(bill: any, userId: string) {
+    // Buscar a fatura completa com banco
+    const fullBill = await this.prisma.creditCardBill.findUnique({
+      where: { id: bill.id },
       include: {
         bank: true,
       },
     });
+
+    if (!fullBill) {
+      return null;
+    }
+
+    const closingDate = new Date(fullBill.closingDate);
+    const billBankId = fullBill.bankId;
+    
+    // Buscar última fatura anterior do mesmo banco
+    const previousBill = await this.prisma.creditCardBill.findFirst({
+      where: {
+        userId,
+        id: { not: fullBill.id },
+        bankId: billBankId,
+        closingDate: { lt: closingDate },
+      },
+      orderBy: {
+        closingDate: 'desc',
+      },
+    });
+
+    const periodStart = previousBill
+      ? new Date(previousBill.closingDate.getTime() + 24 * 60 * 60 * 1000)
+      : new Date(closingDate.getFullYear(), closingDate.getMonth(), 1);
+    const periodEnd = closingDate;
+
+    const creditExpensesWhere: any = {
+      userId,
+      paymentMethod: 'CREDIT',
+      date: {
+        gte: periodStart,
+        lte: periodEnd,
+      },
+    };
+
+    if (billBankId !== null) {
+      creditExpensesWhere.bankId = billBankId;
+    } else {
+      creditExpensesWhere.bankId = null;
+    }
+
+    const creditExpenses = await this.prisma.expense.findMany({
+      where: creditExpensesWhere,
+    });
+
+    const totalAmount = creditExpenses.reduce((sum, expense) => {
+      return sum + Number(expense.amount);
+    }, 0);
+
+    return {
+      ...fullBill,
+      totalAmount: new Prisma.Decimal(totalAmount),
+    };
+  }
+
+  async markAsPaid(id: string, userId: string, paymentBankId?: string, payments?: Array<{ bankId: string; amount: number }>) {
+    const bill = await this.findOne(id, userId);
+    
+    // Se foi fornecido pagamentos parciais, usar pagamento combinado
+    if (payments && payments.length > 0) {
+      return this.payBillCombined(id, userId, bill, payments);
+    }
+    
+    // Determinar qual banco usar para pagar
+    const bankIdToUse = paymentBankId || bill.bankId;
+    
+    // Validar banco se fornecido
+    if (paymentBankId) {
+      const bank = await this.prisma.bank.findUnique({
+        where: { id: paymentBankId },
+      });
+      
+      if (!bank) {
+        throw new NotFoundException('Banco não encontrado');
+      }
+      
+      if (bank.userId !== userId) {
+        throw new ForbiddenException('Banco não pertence ao usuário');
+      }
+    }
+    
+    const updated = await this.prisma.creditCardBill.update({
+      where: { id },
+      data: { 
+        isPaid: true,
+        paidBankId: bankIdToUse || null,
+      },
+      include: {
+        bank: true,
+        paidBank: true,
+      },
+    });
+
+    // Atualizar saldo do banco quando marcar como pago
+    // Se o usuário selecionou um banco para pagar, SEMPRE atualiza o saldo desse banco
+    // (subtrai o valor da fatura do saldo)
+    if (this.banksService && bankIdToUse) {
+      try {
+        // Se a fatura já estava marcada como paga antes, não atualiza novamente
+        // (evita duplicar a subtração)
+        if (!bill.isPaid) {
+          await this.banksService.updateBalanceFromTransaction(
+            bankIdToUse,
+            Number(bill.totalAmount),
+            'expense',
+            'create' // 'create' subtrai do saldo para despesas
+          );
+        }
+      } catch (error) {
+        console.error('Erro ao atualizar saldo do banco:', error);
+        throw error; // Propaga o erro para que o usuário saiba que algo deu errado
+      }
+    }
+
+    return updated;
+  }
+
+  private async payBillCombined(
+    id: string,
+    userId: string,
+    bill: any,
+    payments: Array<{ bankId: string; amount: number }>
+  ) {
+    const totalAmount = Number(bill.totalAmount);
+    const paymentsTotal = payments.reduce((sum, p) => sum + p.amount, 0);
+    
+    // Validar que a soma dos pagamentos é igual ao valor da fatura
+    if (Math.abs(paymentsTotal - totalAmount) > 0.01) {
+      throw new BadRequestException(
+        `A soma dos pagamentos (${paymentsTotal.toFixed(2)}) deve ser igual ao valor da fatura (${totalAmount.toFixed(2)})`
+      );
+    }
+
+    // Validar todos os bancos
+    for (const payment of payments) {
+      const bank = await this.prisma.bank.findUnique({
+        where: { id: payment.bankId },
+      });
+      
+      if (!bank) {
+        throw new NotFoundException(`Banco ${payment.bankId} não encontrado`);
+      }
+      
+      if (bank.userId !== userId) {
+        throw new ForbiddenException(`Banco ${payment.bankId} não pertence ao usuário`);
+      }
+    }
+
+    // Atualizar fatura como paga (usar o primeiro banco como paidBankId para compatibilidade)
+    const updated = await this.prisma.creditCardBill.update({
+      where: { id },
+      data: { 
+        isPaid: true,
+        paidBankId: payments[0].bankId, // Usar o primeiro banco como referência
+      },
+      include: {
+        bank: true,
+        paidBank: true,
+      },
+    });
+
+    // Atualizar saldos de todos os bancos usados
+    if (this.banksService && !bill.isPaid) {
+      try {
+        for (const payment of payments) {
+          await this.banksService.updateBalanceFromTransaction(
+            payment.bankId,
+            payment.amount,
+            'expense',
+            'create' // 'create' subtrai do saldo para despesas
+          );
+        }
+      } catch (error) {
+        console.error('Erro ao atualizar saldos dos bancos:', error);
+        throw error;
+      }
+    }
+
+    return updated;
   }
 
   async markAsUnpaid(id: string, userId: string) {
     const bill = await this.findOne(id, userId);
     
-    return this.prisma.creditCardBill.update({
+    // Buscar a fatura com o paidBankId antes de atualizar
+    const billWithPaidBank = await this.prisma.creditCardBill.findUnique({
       where: { id },
-      data: { isPaid: false },
+      select: { paidBankId: true },
+    });
+    
+    const updated = await this.prisma.creditCardBill.update({
+      where: { id },
+      data: { 
+        isPaid: false,
+        paidBankId: null,
+      },
       include: {
         bank: true,
+        paidBank: true,
       },
     });
+
+    // Reverter saldo do banco quando desmarcar como pago
+    // Usar o paidBankId (banco usado para pagar) se existir, senão usar o bankId (banco da fatura)
+    const bankIdToRevert = billWithPaidBank?.paidBankId || bill.bankId;
+    if (this.banksService && bill.isPaid && bankIdToRevert) {
+      try {
+        // Reverter a subtração anterior (adicionar de volta ao saldo)
+        await this.banksService.updateBalanceFromTransaction(
+          bankIdToRevert,
+          Number(bill.totalAmount),
+          'expense',
+          'delete' // 'delete' adiciona de volta ao saldo (reverte a subtração)
+        );
+      } catch (error) {
+        console.error('Erro ao reverter saldo do banco:', error);
+        // Não propaga o erro aqui para não impedir a atualização do status
+      }
+    }
+
+    return updated;
   }
 
   /**

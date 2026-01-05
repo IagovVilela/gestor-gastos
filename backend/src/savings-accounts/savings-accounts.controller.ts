@@ -120,5 +120,38 @@ export class SavingsAccountsController {
   remove(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     return this.savingsAccountsService.remove(id, user.id);
   }
+
+  @Post(':id/cleanup-transactions')
+  @ApiOperation({ summary: 'Limpar transações incorretas e recalcular valor' })
+  @ApiResponse({ status: 200, description: 'Transações limpas e valor recalculado' })
+  cleanupTransactions(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.savingsAccountsService.cleanupIncorrectTransactions(id, user.id);
+  }
+
+  @Post(':id/create-association-transaction')
+  @ApiOperation({ summary: 'Criar transação de associação retroativamente' })
+  @ApiResponse({ status: 201, description: 'Transação de associação criada' })
+  createAssociationTransaction(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.savingsAccountsService.createAssociationTransaction(id, user.id);
+  }
+
+  @Get(':id/debug-transactions')
+  @ApiOperation({ summary: 'Debug: Listar todas as transações para análise' })
+  @ApiResponse({ status: 200, description: 'Lista de transações para debug' })
+  debugTransactions(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Query('months') months?: string,
+  ) {
+    return this.savingsAccountsService.debugTransactions(id, user.id, months ? parseInt(months) : 12);
+  }
+
+  @Post('restore-savings-balances')
+  @ApiOperation({ summary: 'Restaurar saldos de contas poupança que foram zeradas incorretamente' })
+  @ApiResponse({ status: 200, description: 'Saldos restaurados com sucesso' })
+  restoreSavingsBalances(@CurrentUser() user: { id: string }) {
+    return this.savingsAccountsService.restoreSavingsAccountBalances(user.id);
+  }
 }
+
 

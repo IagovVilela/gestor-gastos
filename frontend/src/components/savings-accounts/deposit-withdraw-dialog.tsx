@@ -38,6 +38,7 @@ interface Bank {
   id: string;
   name: string;
   balance: number;
+  type?: string;
 }
 
 interface SavingsAccount {
@@ -47,6 +48,7 @@ interface SavingsAccount {
   bank?: {
     id: string;
     name: string;
+    type?: string;
   } | null;
 }
 
@@ -102,7 +104,14 @@ export function DepositWithdrawDialog({
     try {
       const response = await api.get(`/savings-accounts/${accountId}`);
       setAccount(response.data);
-      setBankId(response.data.bank?.id || '');
+      // Pré-selecionar o banco associado se existir
+      // Se for conta poupança, o valor será apenas associado, não transferido
+      const bank = response.data.bank;
+      if (bank) {
+        setBankId(bank.id);
+      } else {
+        setBankId('');
+      }
     } catch (error) {
       toast({
         title: 'Erro',
@@ -214,8 +223,12 @@ export function DepositWithdrawDialog({
     : 0;
   
   // Calcular valores após a transação
+  // Se for conta poupança, o saldo não muda (apenas associamos o valor)
+  const isSavingsAccountBank = selectedBank?.type === 'SAVINGS_ACCOUNT';
   const bankBalanceAfter = selectedBank
-    ? type === 'deposit'
+    ? isSavingsAccountBank
+      ? bankBalance // Mantém o saldo se for conta poupança
+      : type === 'deposit'
       ? Number((bankBalance - amountNum).toFixed(2))
       : Number((bankBalance + amountNum).toFixed(2))
     : 0;
@@ -237,16 +250,20 @@ export function DepositWithdrawDialog({
   // O saldo projetado (fase 4) = saldo atual + receitas - despesas - fatura
   // Se for depósito: reduz o saldo atual do banco, então reduz o saldo projetado
   // Se for retirada: aumenta o saldo atual do banco, então aumenta o saldo projetado
+  // Se for conta poupança, o saldo não muda, então o saldo projetado também não muda
   const projectedBalanceAfter = projectedBalance
-    ? type === 'deposit'
+    ? isSavingsAccountBank
+      ? projectedBalance.currentBalance + projectedBalance.totalReceipts - projectedBalance.totalExpenses - projectedBalance.creditCardTotal
+      : type === 'deposit'
       ? projectedBalance.currentBalance - amountNum + projectedBalance.totalReceipts - projectedBalance.totalExpenses - projectedBalance.creditCardTotal
       : projectedBalance.currentBalance + amountNum + projectedBalance.totalReceipts - projectedBalance.totalExpenses - projectedBalance.creditCardTotal
     : null;
 
   // Validações e alertas
-  const hasInsufficientBalance = type === 'deposit' && selectedBank && amountNum > selectedBank.balance;
+  // Se for conta poupança, não verificar saldo insuficiente (apenas associamos o valor)
+  const hasInsufficientBalance = type === 'deposit' && selectedBank && !isSavingsAccountBank && amountNum > selectedBank.balance;
   const hasInsufficientSavings = type === 'withdraw' && account && amountNum > account.currentAmount;
-  const willBeNegative = bankBalanceAfter < 0;
+  const willBeNegative = !isSavingsAccountBank && bankBalanceAfter < 0;
   
   // Calcular margem de segurança (10% das despesas mensais ou mínimo de R$ 500)
   const monthlyObligations = (projectedBalance?.totalExpenses || 0) + (projectedBalance?.creditCardTotal || 0);
@@ -304,7 +321,11 @@ export function DepositWithdrawDialog({
             {type === 'deposit' && selectedBank && parseFloat(amount) > 0 && (
               <p className="text-xs text-muted-foreground mt-1">
                 Saldo disponível no banco: {formatCurrency(selectedBank.balance)}
-                {parseFloat(amount) > selectedBank.balance && (
+                {selectedBank.type === 'SAVINGS_ACCOUNT' ? (
+                  <span className="text-blue-600 dark:text-blue-400 block mt-1">
+                    ℹ️ O valor será apenas associado à poupança. O saldo será mantido.
+                  </span>
+                ) : parseFloat(amount) > selectedBank.balance && (
                   <span className="text-destructive block mt-1">
                     Saldo insuficiente!
                   </span>
@@ -360,6 +381,11 @@ export function DepositWithdrawDialog({
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Banco: {selectedBank.name}</span>
+                      {isSavingsAccountBank && (
+                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
+                          Conta Poupança
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-muted-foreground">Saldo atual:</span>
@@ -377,7 +403,15 @@ export function DepositWithdrawDialog({
                         {formatCurrency(bankBalanceAfter)}
                       </span>
                     </div>
-                    {willBeNegative && (
+                    {isSavingsAccountBank && (
+                      <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 mt-1 p-2 bg-blue-50 dark:bg-blue-950/20 rounded border border-blue-200 dark:border-blue-800">
+                        <Info className="h-4 w-4" />
+                        <span>
+                          O valor será apenas associado à poupança. O saldo da conta poupança será mantido.
+                        </span>
+                      </div>
+                    )}
+                    {willBeNegative && !isSavingsAccountBank && (
                       <div className="flex items-center gap-2 text-xs text-destructive mt-1">
                         <AlertTriangle className="h-4 w-4" />
                         <span>Saldo ficará negativo!</span>

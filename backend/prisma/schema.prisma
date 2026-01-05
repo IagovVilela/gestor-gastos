@@ -252,7 +252,8 @@ model Bank {
   receipts            Receipt[]
   expenses            Expense[]            @relation("ExpenseBank")
   paidExpenses        Expense[]            @relation("ExpensePaidBank")
-  creditCardBills     CreditCardBill[] // Faturas de cartão associadas a este banco
+  creditCardBills     CreditCardBill[]     @relation("CreditCardBillBank") // Faturas de cartão associadas a este banco
+  paidCreditCardBills CreditCardBill[]     @relation("CreditCardBillPaidBank") // Faturas pagas usando este banco
   savingsAccounts     SavingsAccount[] // Poupanças vinculadas a este banco
   savingsTransactions SavingsTransaction[] // Transações de poupança usando este banco
 
@@ -274,19 +275,22 @@ model CreditCardBill {
   paidAmount       Decimal   @default(0) @map("paid_amount") @db.Decimal(10, 2) // Valor já pago
   isPaid           Boolean   @default(false) @map("is_paid") // Se a fatura foi paga
   bankId           String?   @map("bank_id") // Banco do cartão
+  paidBankId       String?   @map("paid_bank_id") // Banco usado para pagar a fatura (pode ser diferente do bankId)
   userId           String    @map("user_id")
   notes            String?   @db.Text
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
 
   // Relacionamentos
-  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bank Bank? @relation(fields: [bankId], references: [id], onDelete: SetNull)
+  user     User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bank     Bank? @relation("CreditCardBillBank", fields: [bankId], references: [id], onDelete: SetNull)
+  paidBank Bank? @relation("CreditCardBillPaidBank", fields: [paidBankId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([closingDate])
   @@index([dueDate])
   @@index([bankId])
+  @@index([paidBankId])
   @@map("credit_card_bills")
 }
 

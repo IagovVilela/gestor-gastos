@@ -13,6 +13,8 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { CreditCardBillsService } from './credit-card-bills.service';
 import { CreateCreditCardBillDto } from './dto/create-credit-card-bill.dto';
 import { UpdateCreditCardBillDto } from './dto/update-credit-card-bill.dto';
+import { MarkPaidDto } from './dto/mark-paid.dto';
+import { PayBillDto } from './dto/pay-bill.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
@@ -45,6 +47,13 @@ export class CreditCardBillsController {
   @ApiResponse({ status: 200, description: 'Fatura do mês atual' })
   getCurrentMonthBill(@CurrentUser() user: { id: string }) {
     return this.creditCardBillsService.getCurrentMonthBill(user.id);
+  }
+
+  @Get('current-month/all')
+  @ApiOperation({ summary: 'Obter faturas atuais de todos os cartões' })
+  @ApiResponse({ status: 200, description: 'Lista de faturas atuais por cartão' })
+  getAllCurrentMonthBills(@CurrentUser() user: { id: string }) {
+    return this.creditCardBillsService.getAllCurrentMonthBills(user.id);
   }
 
   @Get('future')
@@ -97,10 +106,19 @@ export class CreditCardBillsController {
   }
 
   @Patch(':id/mark-paid')
-  @ApiOperation({ summary: 'Marcar fatura como paga' })
+  @ApiOperation({ summary: 'Marcar fatura como paga (suporta pagamento único ou combinado)' })
   @ApiResponse({ status: 200, description: 'Fatura marcada como paga' })
-  markAsPaid(@CurrentUser() user: { id: string }, @Param('id') id: string) {
-    return this.creditCardBillsService.markAsPaid(id, user.id);
+  markAsPaid(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Body() payBillDto?: PayBillDto,
+  ) {
+    // Se foi fornecido payments, usar pagamento combinado
+    if (payBillDto?.payments && payBillDto.payments.length > 0) {
+      return this.creditCardBillsService.markAsPaid(id, user.id, undefined, payBillDto.payments);
+    }
+    // Caso contrário, usar pagamento único (compatibilidade com código antigo)
+    return this.creditCardBillsService.markAsPaid(id, user.id, payBillDto?.paymentBankId);
   }
 
   @Patch(':id/mark-unpaid')

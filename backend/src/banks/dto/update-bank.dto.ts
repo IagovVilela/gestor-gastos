@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsBoolean, IsNumber, Min, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsNumber, Min, IsEnum, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { BankType } from '@prisma/client';
@@ -40,5 +40,11 @@ export class UpdateBankDto {
   @IsString()
   @IsOptional()
   icon?: string;
+
+  // Campos específicos para contas poupança (apenas para UPDATE de tipo)
+  @ApiProperty({ example: 'uuid-da-poupança', description: 'ID da poupança existente para associar (apenas para contas poupança)', required: false })
+  @IsUUID()
+  @IsOptional()
+  existingSavingsAccountId?: string;
 }
 

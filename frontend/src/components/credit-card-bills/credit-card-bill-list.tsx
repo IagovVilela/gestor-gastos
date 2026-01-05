@@ -51,8 +51,9 @@ export function CreditCardBillList() {
   const fetchBills = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/credit-card-bills');
-      setBills(response.data);
+      // Buscar apenas as faturas atuais de cada cartão
+      const response = await api.get('/credit-card-bills/current-month/all');
+      setBills(response.data || []);
     } catch (error) {
       toast({
         title: 'Erro',

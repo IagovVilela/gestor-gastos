@@ -34,6 +34,8 @@ interface Transaction {
   } | null;
   isRecurring?: boolean;
   isFixed?: boolean;
+  isPaid?: boolean;
+  paymentMethod?: string;
 }
 
 interface GroupedTransactions {
@@ -150,6 +152,8 @@ export function FinancialTimeline() {
         category: e.category,
         isRecurring: e.isRecurring,
         isFixed: e.isFixed,
+        isPaid: e.isPaid,
+        paymentMethod: e.paymentMethod,
       }));
 
       const allTransactions = [...receipts, ...expenses].sort((a, b) => {
@@ -212,8 +216,17 @@ export function FinancialTimeline() {
         const totalReceipts = trans
           .filter((t) => t.type === 'receipt')
           .reduce((sum, t) => sum + t.amount, 0);
+        // Filtrar despesas: apenas não pagas e que não sejam de crédito
+        // (despesas de crédito aparecem na fatura do cartão)
         const totalExpenses = trans
-          .filter((t) => t.type === 'expense')
+          .filter((t) => {
+            if (t.type !== 'expense') return false;
+            // Excluir despesas pagas (já foram deduzidas do saldo)
+            if (t.isPaid) return false;
+            // Excluir despesas de crédito (aparecem na fatura)
+            if (t.paymentMethod === 'CREDIT') return false;
+            return true;
+          })
           .reduce((sum, t) => sum + t.amount, 0);
 
         return {

@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateGoalDto } from './dto/create-goal.dto';
 import { UpdateGoalDto } from './dto/update-goal.dto';
 import { DashboardService } from '../dashboard/dashboard.service';
+import { SavingsAccountsService } from '../savings-accounts/savings-accounts.service';
 
 @Injectable()
 export class GoalsService {
@@ -10,6 +11,8 @@ export class GoalsService {
     private prisma: PrismaService,
     @Inject(forwardRef(() => DashboardService))
     private dashboardService?: DashboardService,
+    @Inject(forwardRef(() => SavingsAccountsService))
+    private savingsAccountsService?: SavingsAccountsService,
   ) {}
 
   async create(userId: string, createGoalDto: CreateGoalDto) {
@@ -94,32 +97,42 @@ export class GoalsService {
     const monthlySavings = await this.calculateMonthlySavings(userId);
 
     // Adicionar informações calculadas para cada meta
-    return goals.map((goal) => {
-      // Se houver poupança associada, usar o valor guardado na poupança
-      let currentAmount = Number(goal.currentAmount);
-      if (goal.savingsAccount) {
-        currentAmount = Number(goal.savingsAccount.currentAmount);
-      }
+    const goalsWithCalculatedAmounts = await Promise.all(
+      goals.map(async (goal) => {
+        // Se houver poupança associada, buscar o valor calculado dinamicamente
+        let currentAmount = Number(goal.currentAmount);
+        if (goal.savingsAccount && this.savingsAccountsService) {
+          try {
+            const savingsAccount = await this.savingsAccountsService.findOne(goal.savingsAccount.id, userId);
+            currentAmount = Number(savingsAccount.currentAmount);
+          } catch (error) {
+            // Se não conseguir buscar, usar o valor armazenado como fallback
+            currentAmount = Number(goal.savingsAccount.currentAmount);
+          }
+        }
 
-      // Garantir que nunca seja negativo
-      currentAmount = Math.max(0, currentAmount);
+        // Garantir que nunca seja negativo
+        currentAmount = Math.max(0, currentAmount);
 
-      const remaining = Math.max(0, Number(goal.targetAmount) - currentAmount);
-      const monthsNeeded = monthlySavings > 0 && remaining > 0 ? Math.ceil(remaining / monthlySavings) : null;
-      const estimatedDate = monthsNeeded
-        ? new Date(new Date().setMonth(new Date().getMonth() + monthsNeeded))
-        : null;
+        const remaining = Math.max(0, Number(goal.targetAmount) - currentAmount);
+        const monthsNeeded = monthlySavings > 0 && remaining > 0 ? Math.ceil(remaining / monthlySavings) : null;
+        const estimatedDate = monthsNeeded
+          ? new Date(new Date().setMonth(new Date().getMonth() + monthsNeeded))
+          : null;
 
-      return {
-        ...goal,
-        currentAmount: currentAmount, // Usar valor da poupança se houver
-        remainingAmount: remaining,
-        monthlySavingsNeeded: monthlySavings > 0 && monthsNeeded ? remaining / monthsNeeded : null,
-        monthsNeeded,
-        estimatedCompletionDate: estimatedDate,
-        monthlySavingsAverage: monthlySavings,
-      };
-    });
+        return {
+          ...goal,
+          currentAmount: currentAmount, // Usar valor calculado dinamicamente da poupança se houver
+          remainingAmount: remaining,
+          monthlySavingsNeeded: monthlySavings > 0 && monthsNeeded ? remaining / monthsNeeded : null,
+          monthsNeeded,
+          estimatedCompletionDate: estimatedDate,
+          monthlySavingsAverage: monthlySavings,
+        };
+      }),
+    );
+
+    return goalsWithCalculatedAmounts;
   }
 
   async findOne(id: string, userId: string) {
@@ -145,10 +158,16 @@ export class GoalsService {
       throw new ForbiddenException('Meta não pertence ao usuário');
     }
 
-    // Se houver poupança associada, usar o valor guardado na poupança
+    // Se houver poupança associada, buscar o valor calculado dinamicamente
     let currentAmount = Number(goal.currentAmount);
-    if (goal.savingsAccount) {
-      currentAmount = Number(goal.savingsAccount.currentAmount);
+    if (goal.savingsAccount && this.savingsAccountsService) {
+      try {
+        const savingsAccount = await this.savingsAccountsService.findOne(goal.savingsAccount.id, userId);
+        currentAmount = Number(savingsAccount.currentAmount);
+      } catch (error) {
+        // Se não conseguir buscar, usar o valor armazenado como fallback
+        currentAmount = Number(goal.savingsAccount.currentAmount);
+      }
     }
 
     // Garantir que nunca seja negativo
@@ -264,9 +283,15 @@ export class GoalsService {
     // Calcular progresso baseado no tipo de meta
     let currentAmount = Number(goal.currentAmount);
 
-    // PRIORIDADE: Se houver poupança associada, usar o valor guardado na poupança
-    if (goal.savingsAccount) {
-      currentAmount = Number(goal.savingsAccount.currentAmount);
+    // PRIORIDADE: Se houver poupança associada, buscar o valor calculado dinamicamente
+    if (goal.savingsAccount && this.savingsAccountsService) {
+      try {
+        const savingsAccount = await this.savingsAccountsService.findOne(goal.savingsAccount.id, userId);
+        currentAmount = Number(savingsAccount.currentAmount);
+      } catch (error) {
+        // Se não conseguir buscar, usar o valor armazenado como fallback
+        currentAmount = Number(goal.savingsAccount.currentAmount);
+      }
     } else if (goal.type === 'EXPENSE_LIMIT' || goal.type === 'CATEGORY_LIMIT') {
       // Para limites, calcular baseado nas despesas
       const now = new Date();
