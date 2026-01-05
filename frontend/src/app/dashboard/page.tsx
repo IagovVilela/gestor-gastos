@@ -7,6 +7,7 @@ import { SummaryCards } from '@/components/dashboard/summary-cards';
 import { ProjectedBalance } from '@/components/dashboard/projected-balance';
 import { BankBalances } from '@/components/dashboard/bank-balances';
 import { CreditCardBill } from '@/components/dashboard/credit-card-bill';
+import { SavingsAccountsCard } from '@/components/dashboard/savings-accounts-card';
 import { ReceiptsChart } from '@/components/dashboard/receipts-chart';
 import { ExpensesChart } from '@/components/dashboard/expenses-chart';
 import { RecentTransactions } from '@/components/dashboard/recent-transactions';
@@ -41,9 +42,12 @@ export default function DashboardPage() {
 
           <BankBalances />
 
-          <StaggerContainer>
+          <StaggerContainer className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
             <StaggerItem>
               <CreditCardBill />
+            </StaggerItem>
+            <StaggerItem>
+              <SavingsAccountsCard />
             </StaggerItem>
           </StaggerContainer>
 
