@@ -5,7 +5,7 @@ import { UpdateSavingsAccountDto } from './dto/update-savings-account.dto';
 import { DepositDto } from './dto/deposit.dto';
 import { WithdrawDto } from './dto/withdraw.dto';
 import { BanksService } from '../banks/banks.service';
-import { SavingsTransactionType } from '@prisma/client';
+import { SavingsTransactionType, Prisma } from '@prisma/client';
 
 @Injectable()
 export class SavingsAccountsService {
@@ -264,39 +264,58 @@ export class SavingsAccountsService {
       throw new BadRequestException('Saldo insuficiente no banco para realizar o depósito');
     }
 
-    // Realizar transação
-    const transaction = await this.prisma.$transaction(async (tx) => {
-      // Criar transação de depósito
-      const savingsTransaction = await tx.savingsTransaction.create({
-        data: {
-          savingsAccountId: id,
-          type: SavingsTransactionType.DEPOSIT,
-          amount: depositDto.amount,
-          description: depositDto.description || 'Depósito',
-          bankId,
-          userId,
-        },
-      });
-
-      // Atualizar valor da poupança
-      const updatedSavingsAccount = await tx.savingsAccount.update({
-        where: { id },
-        data: {
-          currentAmount: {
-            increment: depositDto.amount,
+    // Realizar transação com timeout aumentado
+    const transaction = await this.prisma.$transaction(
+      async (tx) => {
+        // Criar transação de depósito
+        const savingsTransaction = await tx.savingsTransaction.create({
+          data: {
+            savingsAccountId: id,
+            type: SavingsTransactionType.DEPOSIT,
+            amount: depositDto.amount,
+            description: depositDto.description || 'Depósito',
+            bankId,
+            userId,
           },
-        },
-      });
+        });
 
-      // Deduzir do saldo do banco
-      await this.banksService.updateBalance(
-        bankId,
-        userId,
-        { balance: Number(bank.balance) - depositDto.amount },
-      );
+        // Atualizar valor da poupança
+        const updatedSavingsAccount = await tx.savingsAccount.update({
+          where: { id },
+          data: {
+            currentAmount: {
+              increment: depositDto.amount,
+            },
+          },
+        });
 
-      return { savingsTransaction, updatedSavingsAccount };
-    });
+        // Deduzir do saldo do banco diretamente na transação (otimizado)
+        // Buscar saldo atual do banco dentro da transação para garantir consistência
+        const currentBankForDeposit = await tx.bank.findUnique({
+          where: { id: bankId },
+          select: { balance: true },
+        });
+
+        if (!currentBankForDeposit) {
+          throw new NotFoundException('Banco não encontrado');
+        }
+
+        // Calcular novo saldo e atualizar usando Prisma.Decimal
+        const newBalanceForDeposit = Number(currentBankForDeposit.balance) - depositDto.amount;
+        await tx.bank.update({
+          where: { id: bankId },
+          data: {
+            balance: new Prisma.Decimal(newBalanceForDeposit),
+          },
+        });
+
+        return { savingsTransaction, updatedSavingsAccount };
+      },
+      {
+        maxWait: 10000, // Tempo máximo de espera para iniciar a transação (10s)
+        timeout: 15000, // Timeout da transação (15s)
+      },
+    );
 
     return transaction.savingsTransaction;
   }
@@ -327,39 +346,58 @@ export class SavingsAccountsService {
       throw new NotFoundException('Banco não encontrado ou não pertence ao usuário');
     }
 
-    // Realizar transação
-    const transaction = await this.prisma.$transaction(async (tx) => {
-      // Criar transação de retirada
-      const savingsTransaction = await tx.savingsTransaction.create({
-        data: {
-          savingsAccountId: id,
-          type: SavingsTransactionType.WITHDRAWAL,
-          amount: withdrawDto.amount,
-          description: withdrawDto.description || 'Retirada',
-          bankId,
-          userId,
-        },
-      });
-
-      // Atualizar valor da poupança
-      const updatedSavingsAccount = await tx.savingsAccount.update({
-        where: { id },
-        data: {
-          currentAmount: {
-            decrement: withdrawDto.amount,
+    // Realizar transação com timeout aumentado
+    const transaction = await this.prisma.$transaction(
+      async (tx) => {
+        // Criar transação de retirada
+        const savingsTransaction = await tx.savingsTransaction.create({
+          data: {
+            savingsAccountId: id,
+            type: SavingsTransactionType.WITHDRAWAL,
+            amount: withdrawDto.amount,
+            description: withdrawDto.description || 'Retirada',
+            bankId,
+            userId,
           },
-        },
-      });
+        });
 
-      // Adicionar ao saldo do banco
-      await this.banksService.updateBalance(
-        bankId,
-        userId,
-        { balance: Number(bank.balance) + withdrawDto.amount },
-      );
+        // Atualizar valor da poupança
+        const updatedSavingsAccount = await tx.savingsAccount.update({
+          where: { id },
+          data: {
+            currentAmount: {
+              decrement: withdrawDto.amount,
+            },
+          },
+        });
 
-      return { savingsTransaction, updatedSavingsAccount };
-    });
+        // Adicionar ao saldo do banco diretamente na transação (otimizado)
+        // Buscar saldo atual do banco dentro da transação para garantir consistência
+        const currentBank = await tx.bank.findUnique({
+          where: { id: bankId },
+          select: { balance: true },
+        });
+
+        if (!currentBank) {
+          throw new NotFoundException('Banco não encontrado');
+        }
+
+        // Calcular novo saldo e atualizar usando Prisma.Decimal
+        const newBalance = Number(currentBank.balance) + withdrawDto.amount;
+        await tx.bank.update({
+          where: { id: bankId },
+          data: {
+            balance: new Prisma.Decimal(newBalance),
+          },
+        });
+
+        return { savingsTransaction, updatedSavingsAccount };
+      },
+      {
+        maxWait: 10000, // Tempo máximo de espera para iniciar a transação (10s)
+        timeout: 15000, // Timeout da transação (15s)
+      },
+    );
 
     return transaction.savingsTransaction;
   }

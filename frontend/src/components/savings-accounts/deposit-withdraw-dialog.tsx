@@ -187,6 +187,9 @@ export function DepositWithdrawDialog({
         });
       }
 
+      // Disparar evento para atualizar saldos dos bancos e outros componentes
+      window.dispatchEvent(new CustomEvent('balanceUpdated'));
+
       resetForm();
       onClose();
     } catch (error: any) {
@@ -203,17 +206,31 @@ export function DepositWithdrawDialog({
   const selectedBank = banks.find((b) => b.id === bankId);
   const amountNum = parseFloat(amount) || 0;
   
+  // Garantir que o saldo do banco seja um número (pode vir como string do backend)
+  const bankBalance = selectedBank 
+    ? typeof selectedBank.balance === 'string' 
+      ? parseFloat(selectedBank.balance) || 0
+      : Number(selectedBank.balance) || 0
+    : 0;
+  
   // Calcular valores após a transação
   const bankBalanceAfter = selectedBank
     ? type === 'deposit'
-      ? selectedBank.balance - amountNum
-      : selectedBank.balance + amountNum
+      ? Number((bankBalance - amountNum).toFixed(2))
+      : Number((bankBalance + amountNum).toFixed(2))
+    : 0;
+
+  // Garantir que o valor da poupança seja um número
+  const savingsCurrentAmount = account
+    ? typeof account.currentAmount === 'string'
+      ? parseFloat(account.currentAmount) || 0
+      : Number(account.currentAmount) || 0
     : 0;
 
   const savingsAmountAfter = account
     ? type === 'deposit'
-      ? account.currentAmount + amountNum
-      : account.currentAmount - amountNum
+      ? Number((savingsCurrentAmount + amountNum).toFixed(2))
+      : Number((savingsCurrentAmount - amountNum).toFixed(2))
     : 0;
 
   // Calcular saldo projetado após a transação
