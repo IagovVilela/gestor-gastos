@@ -64,5 +64,10 @@ export class CreateExpenseDto {
   @IsString()
   @IsOptional()
   bankId?: string;
+
+  @ApiProperty({ example: false, description: 'Se a despesa foi paga', required: false })
+  @IsBoolean()
+  @IsOptional()
+  isPaid?: boolean;
 }
 

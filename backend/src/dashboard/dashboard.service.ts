@@ -50,11 +50,14 @@ export class DashboardService {
       },
     });
 
-    // Buscar TODAS as despesas do mês (já pagas + futuras)
-    // Mas apenas as que NÃO são crédito (crédito não afeta saldo até pagar)
+    // Buscar despesas do mês que AINDA NÃO FORAM PAGAS
+    // Apenas as que NÃO são crédito (crédito não afeta saldo até pagar)
+    // IMPORTANTE: Despesas já pagas (isPaid = true) já foram deduzidas do saldo do banco,
+    // então não devem ser consideradas novamente no cálculo
     const allExpenses = await this.prisma.expense.findMany({
       where: {
         userId,
+        isPaid: false, // Apenas despesas não pagas
         OR: [
           {
             paymentDate: {
@@ -136,10 +139,13 @@ export class DashboardService {
       : null;
 
     // Calcular total da fatura do cartão (despesas de crédito do mês)
+    // IMPORTANTE: Considerar apenas despesas de crédito não pagas
+    // Despesas de crédito pagas já foram deduzidas do saldo quando a fatura foi paga
     const creditCardExpenses = await this.prisma.expense.findMany({
       where: {
         userId,
         paymentMethod: PaymentMethod.CREDIT,
+        isPaid: false, // Apenas despesas de crédito não pagas
         date: {
           gte: firstDayOfMonth,
           lte: lastDayOfMonth,

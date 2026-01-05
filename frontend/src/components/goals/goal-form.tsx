@@ -25,6 +25,7 @@ import {
 import api from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { GoalImageUpload } from './goal-image-upload';
 
 const goalSchema = z.object({
   title: z.string().min(1, 'Título é obrigatório'),
@@ -36,6 +37,8 @@ const goalSchema = z.object({
   deadline: z.string().optional(),
   type: z.enum(['SAVINGS', 'EXPENSE_LIMIT', 'CATEGORY_LIMIT', 'MONTHLY_BUDGET']),
   categoryId: z.string().optional(),
+  imageUrl: z.string().optional(),
+  purchaseLink: z.string().optional(),
 });
 
 type GoalFormData = z.infer<typeof goalSchema>;
@@ -91,6 +94,8 @@ export function GoalForm({
           deadline: '',
           type: 'SAVINGS',
           categoryId: '',
+          imageUrl: '',
+          purchaseLink: '',
         });
       }
     }
@@ -118,6 +123,8 @@ export function GoalForm({
           : '',
         type: goal.type,
         categoryId: goal.categoryId || '',
+        imageUrl: goal.imageUrl || '',
+        purchaseLink: goal.purchaseLink || '',
       });
     } catch (error) {
       toast({
@@ -260,6 +267,27 @@ export function GoalForm({
               </Select>
             </div>
           )}
+
+          <div className="space-y-2">
+            <GoalImageUpload
+              value={watch('imageUrl')}
+              onChange={(url) => setValue('imageUrl', url || '')}
+              disabled={loading}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="purchaseLink">Link de Compra</Label>
+            <Input
+              id="purchaseLink"
+              {...register('purchaseLink')}
+              placeholder="https://example.com/product"
+              type="url"
+            />
+            <p className="text-xs text-muted-foreground">
+              Link onde você pretende comprar esta meta (opcional)
+            </p>
+          </div>
 
           <DialogFooter>
             <Button

@@ -39,6 +39,18 @@ export function BankBalances() {
   useEffect(() => {
     fetchBanks();
     fetchTotalBalance();
+    
+    // Escutar evento de atualização de saldo
+    const handleBalanceUpdate = () => {
+      fetchBanks();
+      fetchTotalBalance();
+    };
+    
+    window.addEventListener('balanceUpdated', handleBalanceUpdate);
+    
+    return () => {
+      window.removeEventListener('balanceUpdated', handleBalanceUpdate);
+    };
   }, []);
 
   const fetchBanks = async () => {

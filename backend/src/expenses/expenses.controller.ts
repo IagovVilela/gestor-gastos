@@ -14,6 +14,7 @@ import { ExpensesService } from './expenses.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { QueryExpenseDto } from './dto/query-expense.dto';
+import { MarkPaidDto } from './dto/mark-paid.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
@@ -91,6 +92,24 @@ export class ExpensesController {
   @ApiResponse({ status: 200, description: 'Despesa deletada com sucesso' })
   remove(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     return this.expensesService.remove(id, user.id);
+  }
+
+  @Patch(':id/mark-paid')
+  @ApiOperation({ summary: 'Marcar despesa como paga' })
+  @ApiResponse({ status: 200, description: 'Despesa marcada como paga' })
+  markAsPaid(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Body() markPaidDto?: MarkPaidDto,
+  ) {
+    return this.expensesService.markAsPaid(id, user.id, markPaidDto?.paymentBankId);
+  }
+
+  @Patch(':id/mark-unpaid')
+  @ApiOperation({ summary: 'Marcar despesa como não paga' })
+  @ApiResponse({ status: 200, description: 'Despesa marcada como não paga' })
+  markAsUnpaid(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.expensesService.markAsUnpaid(id, user.id);
   }
 }
 

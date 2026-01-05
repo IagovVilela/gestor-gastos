@@ -8,9 +8,13 @@ import { ExpenseFilters } from './expense-filters';
 import api from '@/lib/api';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Pencil, Trash2, ArrowDownCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, ArrowDownCircle, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,6 +25,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 
 interface Expense {
@@ -28,7 +40,17 @@ interface Expense {
   description: string;
   amount: number;
   date: string;
+  paymentDate?: string;
+  paymentMethod?: string;
+  isPaid?: boolean;
   category?: {
+    name: string;
+  } | null;
+  bank?: {
+    name: string;
+  } | null;
+  paidBank?: {
+    id: string;
     name: string;
   } | null;
   isRecurring: boolean;
@@ -52,12 +74,26 @@ export function ExpenseList() {
     total: 0,
     totalPages: 0,
   });
+  const [markPaidDialogOpen, setMarkPaidDialogOpen] = useState(false);
+  const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(null);
+  const [selectedBankId, setSelectedBankId] = useState<string>('');
+  const [banks, setBanks] = useState<Array<{ id: string; name: string }>>([]);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchCategories();
     fetchExpenses();
+    fetchBanks();
   }, []);
+
+  const fetchBanks = async () => {
+    try {
+      const response = await api.get('/banks');
+      setBanks(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar bancos:', error);
+    }
+  };
 
   useEffect(() => {
     fetchExpenses(1); // Resetar para página 1 quando filtros mudarem
@@ -137,6 +173,57 @@ export function ExpenseList() {
     }).format(value);
   };
 
+  const handleMarkAsPaid = (expenseId: string, currentIsPaid: boolean) => {
+    if (currentIsPaid) {
+      // Se já está pago, apenas desmarcar
+      handleTogglePaid(expenseId, false);
+    } else {
+      // Se não está pago, abrir diálogo para selecionar banco
+      setSelectedExpenseId(expenseId);
+      setSelectedBankId('');
+      setMarkPaidDialogOpen(true);
+    }
+  };
+
+  const handleTogglePaid = async (expenseId: string, isPaid: boolean, paymentBankId?: string) => {
+    try {
+      if (isPaid) {
+        await api.patch(`/expenses/${expenseId}/mark-paid`, {
+          paymentBankId: paymentBankId || undefined,
+        });
+        toast({
+          title: 'Sucesso',
+          description: 'Despesa marcada como paga',
+        });
+      } else {
+        await api.patch(`/expenses/${expenseId}/mark-unpaid`);
+        toast({
+          title: 'Sucesso',
+          description: 'Despesa marcada como não paga',
+        });
+      }
+      fetchExpenses(pagination.page);
+      
+      // Disparar evento para atualizar saldos em outros componentes
+      window.dispatchEvent(new CustomEvent('balanceUpdated'));
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error.response?.data?.message || 'Erro ao atualizar status da despesa',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleConfirmMarkAsPaid = () => {
+    if (selectedExpenseId) {
+      handleTogglePaid(selectedExpenseId, true, selectedBankId || undefined);
+      setMarkPaidDialogOpen(false);
+      setSelectedExpenseId(null);
+      setSelectedBankId('');
+    }
+  };
+
   if (loading) {
     return (
       <Card>
@@ -185,11 +272,25 @@ export function ExpenseList() {
                   <div className="flex items-start sm:items-center gap-4 flex-1 w-full sm:w-auto min-w-0">
                     <ArrowDownCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-1 sm:mt-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{expense.description}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium truncate">{expense.description}</p>
+                        {expense.isPaid && (
+                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                            <Check className="h-3 w-3 mr-1" />
+                            Paga
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground">
                         {format(new Date(expense.date), "dd 'de' MMM 'de' yyyy", {
                           locale: ptBR,
                         })}
+                        {expense.paymentDate && expense.paymentDate !== expense.date && (
+                          <> • Pagar em {format(new Date(expense.paymentDate), "dd 'de' MMM", { locale: ptBR })}</>
+                        )}
+                        {expense.isPaid && expense.paidBank && (
+                          <> • Pago com: <span className="font-semibold">{expense.paidBank.name}</span></>
+                        )}
                         {expense.category && ` • ${expense.category.name}`}
                         {expense.isFixed && ` • Fixo`}
                         {expense.isRecurring && ` • Recorrente`}
@@ -213,7 +314,17 @@ export function ExpenseList() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-2 w-full sm:w-auto justify-end sm:justify-start">
+                  <div className="flex items-center gap-3 w-full sm:w-auto justify-end sm:justify-start">
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor={`paid-${expense.id}`} className="text-sm text-muted-foreground">
+                        Paga
+                      </Label>
+                      <Switch
+                        id={`paid-${expense.id}`}
+                        checked={expense.isPaid || false}
+                        onCheckedChange={(checked) => handleMarkAsPaid(expense.id, !checked)}
+                      />
+                    </div>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -302,6 +413,57 @@ export function ExpenseList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Diálogo para selecionar banco ao marcar como pago */}
+      <Dialog open={markPaidDialogOpen} onOpenChange={setMarkPaidDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Marcar Despesa como Paga</DialogTitle>
+            <DialogDescription>
+              Selecione o banco usado para pagar esta despesa. O saldo será atualizado automaticamente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="paymentBank">Banco usado para pagar</Label>
+              <Select
+                value={selectedBankId || 'none'}
+                onValueChange={(value) => setSelectedBankId(value === 'none' ? '' : value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o banco (opcional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem banco específico</SelectItem>
+                  {banks.map((bank) => (
+                    <SelectItem key={bank.id} value={bank.id}>
+                      {bank.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Se não selecionar, o sistema usará o banco da despesa ou não atualizará o saldo.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setMarkPaidDialogOpen(false);
+                setSelectedExpenseId(null);
+                setSelectedBankId('');
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmMarkAsPaid}>
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

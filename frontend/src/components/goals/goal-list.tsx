@@ -7,7 +7,7 @@ import { GoalForm } from './goal-form';
 import api from '@/lib/api';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Pencil, Trash2, Target, TrendingUp } from 'lucide-react';
+import { Plus, Pencil, Trash2, Target, TrendingUp, Calendar, DollarSign, ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
 import {
   AlertDialog,
@@ -31,6 +31,13 @@ interface Goal {
   deadline?: string;
   type: string;
   isCompleted: boolean;
+  imageUrl?: string;
+  purchaseLink?: string;
+  remainingAmount?: number;
+  monthlySavingsNeeded?: number;
+  monthsNeeded?: number;
+  estimatedCompletionDate?: string;
+  monthlySavingsAverage?: number;
   category?: {
     name: string;
   } | null;
@@ -123,7 +130,9 @@ export function GoalList() {
   };
 
   const getProgress = (goal: Goal) => {
-    return Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
+    if (goal.targetAmount <= 0) return 0;
+    const progress = (Math.max(0, goal.currentAmount) / goal.targetAmount) * 100;
+    return Math.min(Math.max(0, progress), 100); // Garantir que está entre 0 e 100
   };
 
   if (loading) {
@@ -171,10 +180,28 @@ export function GoalList() {
                     transition={{ delay: index * 0.1 }}
                     className="border rounded-lg p-4 space-y-4 hover:shadow-lg transition-shadow"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
+                    <div className="flex items-start justify-between gap-4">
+                      {/* Imagem da meta */}
+                      {goal.imageUrl && (
+                        <div className="relative w-32 h-32 rounded-lg overflow-hidden border flex-shrink-0 bg-muted">
+                          <img
+                            src={
+                              goal.imageUrl.startsWith('http')
+                                ? goal.imageUrl
+                                : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${goal.imageUrl}`
+                            }
+                            alt={goal.title}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      )}
+                      
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
-                          <Target className="h-5 w-5 text-primary" />
+                          <Target className="h-5 w-5 text-primary flex-shrink-0" />
                           <h3 className="font-semibold text-lg">{goal.title}</h3>
                           {goal.isCompleted && (
                             <span className="text-xs bg-green-500 text-white px-2 py-1 rounded">
@@ -187,7 +214,7 @@ export function GoalList() {
                             {goal.description}
                           </p>
                         )}
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                           <span>Tipo: {getTypeLabel(goal.type)}</span>
                           {goal.category && (
                             <span>Categoria: {goal.category.name}</span>
@@ -201,6 +228,74 @@ export function GoalList() {
                             </span>
                           )}
                         </div>
+                        
+                        {/* Informações de economia */}
+                        {goal.remainingAmount !== undefined && goal.remainingAmount > 0 && (
+                          <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-muted/50 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <DollarSign className="h-4 w-4 text-muted-foreground" />
+                              <div>
+                                <p className="text-xs text-muted-foreground">Falta economizar</p>
+                                <p className="font-semibold text-lg text-primary">
+                                  {formatCurrency(goal.remainingAmount)}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {goal.monthlySavingsNeeded && (
+                              <div className="flex items-center gap-2">
+                                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Por mês</p>
+                                  <p className="font-semibold">
+                                    {formatCurrency(goal.monthlySavingsNeeded)}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {goal.estimatedCompletionDate && (
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-muted-foreground" />
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Previsão</p>
+                                  <p className="font-semibold">
+                                    {format(new Date(goal.estimatedCompletionDate), "MMM 'de' yyyy", {
+                                      locale: ptBR,
+                                    })}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {goal.monthsNeeded && (
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-muted-foreground" />
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Tempo estimado</p>
+                                  <p className="font-semibold">
+                                    {goal.monthsNeeded} {goal.monthsNeeded === 1 ? 'mês' : 'meses'}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Link de compra */}
+                        {goal.purchaseLink && (
+                          <div className="mt-2">
+                            <a
+                              href={goal.purchaseLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                              Ver onde comprar
+                            </a>
+                          </div>
+                        )}
                       </div>
                       <div className="flex gap-2">
                         <Button
@@ -235,7 +330,7 @@ export function GoalList() {
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Progresso</span>
                         <span className="font-medium">
-                          {formatCurrency(goal.currentAmount)} /{' '}
+                          {formatCurrency(Math.max(0, goal.currentAmount))} /{' '}
                           {formatCurrency(goal.targetAmount)} ({progress.toFixed(0)}%)
                         </span>
                       </div>

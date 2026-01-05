@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { CreditCardBillsService } from './credit-card-bills.service';
@@ -46,6 +47,30 @@ export class CreditCardBillsController {
     return this.creditCardBillsService.getCurrentMonthBill(user.id);
   }
 
+  @Get('future')
+  @ApiOperation({ summary: 'Listar faturas futuras' })
+  @ApiResponse({ status: 200, description: 'Lista de faturas futuras' })
+  getFutureBills(
+    @CurrentUser() user: { id: string },
+    @Query('bankId') bankId?: string,
+    @Query('monthsAhead') monthsAhead?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const parsedBankId = bankId === 'null' || bankId === '' ? null : bankId;
+    const parsedMonthsAhead = monthsAhead ? parseInt(monthsAhead, 10) : 5;
+    const parsedStartDate = startDate ? new Date(startDate) : undefined;
+    const parsedEndDate = endDate ? new Date(endDate) : undefined;
+
+    return this.creditCardBillsService.getFutureBills(
+      user.id,
+      parsedBankId,
+      parsedMonthsAhead,
+      parsedStartDate,
+      parsedEndDate,
+    );
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Obter fatura por ID' })
   @ApiResponse({ status: 200, description: 'Fatura encontrada' })
@@ -69,5 +94,19 @@ export class CreditCardBillsController {
   @ApiResponse({ status: 200, description: 'Fatura deletada com sucesso' })
   remove(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     return this.creditCardBillsService.remove(id, user.id);
+  }
+
+  @Patch(':id/mark-paid')
+  @ApiOperation({ summary: 'Marcar fatura como paga' })
+  @ApiResponse({ status: 200, description: 'Fatura marcada como paga' })
+  markAsPaid(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.creditCardBillsService.markAsPaid(id, user.id);
+  }
+
+  @Patch(':id/mark-unpaid')
+  @ApiOperation({ summary: 'Marcar fatura como não paga' })
+  @ApiResponse({ status: 200, description: 'Fatura marcada como não paga' })
+  markAsUnpaid(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.creditCardBillsService.markAsUnpaid(id, user.id);
   }
 }

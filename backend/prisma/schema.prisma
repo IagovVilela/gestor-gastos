@@ -14,22 +14,24 @@ datasource db {
 // MODELO: User (Usuário)
 // ============================================
 model User {
-  id            String    @id @default(uuid())
-  name          String
-  email         String    @unique
-  password      String
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relacionamentos
-  categories    Category[]
-  receipts      Receipt[]
-  expenses      Expense[]
-  goals         Goal[]
-  alerts        Alert[]
-  settings      UserSettings?
-  banks         Bank[]
-  creditCardBills CreditCardBill[] // Faturas de cartão de crédito
+  categories          Category[]
+  receipts            Receipt[]
+  expenses            Expense[]
+  goals               Goal[]
+  alerts              Alert[]
+  settings            UserSettings?
+  banks               Bank[]
+  creditCardBills     CreditCardBill[] // Faturas de cartão de crédito
+  savingsAccounts     SavingsAccount[] // Poupanças
+  savingsTransactions SavingsTransaction[] // Transações de poupança
 
   @@map("users")
 }
@@ -38,64 +40,64 @@ model User {
 // MODELO: Category (Categoria)
 // ============================================
 model Category {
-  id            String    @id @default(uuid())
-  name          String
-  description   String?   @db.Text
-  type          CategoryType // RECEIPT ou EXPENSE
-  color         String?   // Cor para identificação visual
-  icon          String?   // Ícone para identificação visual
-  userId        String    @map("user_id")
-  parentId      String?   @map("parent_id") // Para subcategorias
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id          String       @id @default(uuid())
+  name        String
+  description String?      @db.Text
+  type        CategoryType // RECEIPT ou EXPENSE
+  color       String? // Cor para identificação visual
+  icon        String? // Ícone para identificação visual
+  userId      String       @map("user_id")
+  parentId    String?      @map("parent_id") // Para subcategorias
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
 
   // Relacionamentos
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parent        Category? @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent        Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
   subcategories Category[] @relation("CategoryHierarchy")
   receipts      Receipt[]
   expenses      Expense[]
   goals         Goal[]
 
-  @@map("categories")
   @@index([userId])
   @@index([parentId])
+  @@map("categories")
 }
 
 enum CategoryType {
-  RECEIPT  // Receita
-  EXPENSE  // Despesa
-  BOTH     // Ambos
+  RECEIPT // Receita
+  EXPENSE // Despesa
+  BOTH // Ambos
 }
 
 // ============================================
 // MODELO: Receipt (Receita)
 // ============================================
 model Receipt {
-  id            String    @id @default(uuid())
-  description   String
-  amount        Decimal   @db.Decimal(10, 2)
-  date          DateTime
-  categoryId    String?   @map("category_id")
-  bankId        String?   @map("bank_id") // Banco onde a receita foi recebida
-  userId        String    @map("user_id")
-  isRecurring   Boolean   @default(false) @map("is_recurring")
-  recurringType RecurringType? @map("recurring_type") // MONTHLY, WEEKLY, etc
-  paymentSchedule String? @db.Text @map("payment_schedule") // JSON com distribuição de pagamento (ex: [{"day": 15, "percentage": 40}, {"day": 31, "percentage": 60}])
-  notes         String?   @db.Text
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id              String         @id @default(uuid())
+  description     String
+  amount          Decimal        @db.Decimal(10, 2)
+  date            DateTime
+  categoryId      String?        @map("category_id")
+  bankId          String?        @map("bank_id") // Banco onde a receita foi recebida
+  userId          String         @map("user_id")
+  isRecurring     Boolean        @default(false) @map("is_recurring")
+  recurringType   RecurringType? @map("recurring_type") // MONTHLY, WEEKLY, etc
+  paymentSchedule String?        @map("payment_schedule") @db.Text // JSON com distribuição de pagamento (ex: [{"day": 15, "percentage": 40}, {"day": 31, "percentage": 60}])
+  notes           String?        @db.Text
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
 
   // Relacionamentos
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  bank          Bank?     @relation(fields: [bankId], references: [id], onDelete: SetNull)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  bank     Bank?     @relation(fields: [bankId], references: [id], onDelete: SetNull)
 
-  @@map("receipts")
   @@index([userId])
   @@index([date])
   @@index([categoryId])
   @@index([bankId])
+  @@map("receipts")
 }
 
 enum RecurringType {
@@ -106,47 +108,51 @@ enum RecurringType {
 }
 
 enum PaymentMethod {
-  CREDIT         // Cartão de Crédito
-  DEBIT          // Cartão de Débito
-  CASH           // Dinheiro
-  PIX            // PIX
-  BANK_TRANSFER  // Transferência Bancária
-  OTHER          // Outros
+  CREDIT // Cartão de Crédito
+  DEBIT // Cartão de Débito
+  CASH // Dinheiro
+  PIX // PIX
+  BANK_TRANSFER // Transferência Bancária
+  OTHER // Outros
 }
 
 // ============================================
 // MODELO: Expense (Despesa)
 // ============================================
 model Expense {
-  id            String    @id @default(uuid())
-  description   String
-  amount        Decimal   @db.Decimal(10, 2)
-  date          DateTime  // Data do lançamento (quando foi registrado)
-  paymentDate   DateTime? @map("payment_date") // Data em que será/será pago (lançamento futuro)
-  paymentMethod PaymentMethod? @map("payment_method") // Forma de pagamento
-  categoryId    String?   @map("category_id")
-  bankId        String?   @map("bank_id") // Banco de onde a despesa foi paga
-  userId        String    @map("user_id")
-  isRecurring   Boolean   @default(false) @map("is_recurring")
-  recurringType RecurringType? @map("recurring_type")
-  isFixed       Boolean   @default(false) @map("is_fixed") // Gasto fixo ou variável
-  notes         String?   @db.Text
-  receiptImageUrl String? @map("receipt_image_url") // URL da imagem do comprovante
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id              String         @id @default(uuid())
+  description     String
+  amount          Decimal        @db.Decimal(10, 2)
+  date            DateTime // Data do lançamento (quando foi registrado)
+  paymentDate     DateTime?      @map("payment_date") // Data em que será/será pago (lançamento futuro)
+  paymentMethod   PaymentMethod? @map("payment_method") // Forma de pagamento
+  isPaid          Boolean        @default(false) @map("is_paid") // Se a despesa foi paga
+  paidBankId      String?        @map("paid_bank_id") // Banco usado para pagar a despesa (pode ser diferente do bankId)
+  categoryId      String?        @map("category_id")
+  bankId          String?        @map("bank_id") // Banco de onde a despesa foi paga
+  userId          String         @map("user_id")
+  isRecurring     Boolean        @default(false) @map("is_recurring")
+  recurringType   RecurringType? @map("recurring_type")
+  isFixed         Boolean        @default(false) @map("is_fixed") // Gasto fixo ou variável
+  notes           String?        @db.Text
+  receiptImageUrl String?        @map("receipt_image_url") // URL da imagem do comprovante
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
 
   // Relacionamentos
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  bank          Bank?     @relation(fields: [bankId], references: [id], onDelete: SetNull)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  bank     Bank?     @relation("ExpenseBank", fields: [bankId], references: [id], onDelete: SetNull)
+  paidBank Bank?     @relation("ExpensePaidBank", fields: [paidBankId], references: [id], onDelete: SetNull)
 
-  @@map("expenses")
   @@index([userId])
   @@index([date])
   @@index([paymentDate])
   @@index([paymentMethod])
   @@index([categoryId])
   @@index([bankId])
+  @@index([paidBankId])
+  @@map("expenses")
 }
 
 // ============================================
@@ -156,27 +162,30 @@ model Goal {
   id            String    @id @default(uuid())
   title         String
   description   String?   @db.Text
-  targetAmount  Decimal   @db.Decimal(10, 2) @map("target_amount")
-  currentAmount Decimal   @default(0) @db.Decimal(10, 2) @map("current_amount")
+  targetAmount  Decimal   @map("target_amount") @db.Decimal(10, 2)
+  currentAmount Decimal   @default(0) @map("current_amount") @db.Decimal(10, 2)
   deadline      DateTime?
   type          GoalType
   categoryId    String?   @map("category_id") // Meta por categoria (opcional)
+  imageUrl      String?   @map("image_url") @db.Text // URL da imagem da meta
+  purchaseLink  String?   @map("purchase_link") @db.Text // Link onde comprar a meta
   userId        String    @map("user_id")
   isCompleted   Boolean   @default(false) @map("is_completed")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
   // Relacionamentos
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category       Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  savingsAccount SavingsAccount? // Poupança associada a esta meta
 
-  @@map("goals")
   @@index([userId])
   @@index([categoryId])
+  @@map("goals")
 }
 
 enum GoalType {
-  SAVINGS      // Economia geral
+  SAVINGS // Economia geral
   EXPENSE_LIMIT // Limite de gastos
   CATEGORY_LIMIT // Limite por categoria
   MONTHLY_BUDGET // Orçamento mensal
@@ -186,142 +195,206 @@ enum GoalType {
 // MODELO: Alert (Alerta)
 // ============================================
 model Alert {
-  id            String    @id @default(uuid())
-  title         String
-  message       String    @db.Text
-  type          AlertType
-  severity      AlertSeverity @default(INFO)
-  userId        String    @map("user_id")
-  isRead        Boolean   @default(false) @map("is_read")
-  relatedGoalId String?   @map("related_goal_id") // Alerta relacionado a uma meta
-  relatedCategoryId String? @map("related_category_id") // Alerta relacionado a uma categoria
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id                String        @id @default(uuid())
+  title             String
+  message           String        @db.Text
+  type              AlertType
+  severity          AlertSeverity @default(INFO)
+  userId            String        @map("user_id")
+  isRead            Boolean       @default(false) @map("is_read")
+  relatedGoalId     String?       @map("related_goal_id") // Alerta relacionado a uma meta
+  relatedCategoryId String?       @map("related_category_id") // Alerta relacionado a uma categoria
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
 
   // Relacionamentos
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("alerts")
   @@index([userId])
   @@index([isRead])
   @@index([createdAt])
+  @@map("alerts")
 }
 
 enum AlertType {
-  BUDGET_EXCEEDED    // Orçamento excedido
-  GOAL_ACHIEVED      // Meta alcançada
-  GOAL_WARNING       // Aviso sobre meta
-  CATEGORY_LIMIT     // Limite de categoria
-  RECURRING_PAYMENT  // Pagamento recorrente
-  SYSTEM             // Alerta do sistema
+  BUDGET_EXCEEDED // Orçamento excedido
+  GOAL_ACHIEVED // Meta alcançada
+  GOAL_WARNING // Aviso sobre meta
+  CATEGORY_LIMIT // Limite de categoria
+  RECURRING_PAYMENT // Pagamento recorrente
+  SYSTEM // Alerta do sistema
 }
 
 enum AlertSeverity {
-  INFO      // Informativo
-  WARNING   // Aviso
-  ERROR     // Erro
-  SUCCESS   // Sucesso
+  INFO // Informativo
+  WARNING // Aviso
+  ERROR // Erro
+  SUCCESS // Sucesso
 }
 
 // ============================================
 // MODELO: Bank (Banco/Conta Bancária)
 // ============================================
 model Bank {
-  id            String    @id @default(uuid())
-  name          String    // Nome do banco (ex: "Nubank", "Banco do Brasil")
-  type          BankType  @default(CURRENT_ACCOUNT) @map("type") // Tipo de conta
-  balance       Decimal   @default(0) @db.Decimal(10, 2) // Saldo atual
-  isPrimary     Boolean   @default(false) @map("is_primary") // Banco principal
-  color         String?   // Cor para identificação visual
-  icon          String?   // Ícone para identificação visual
-  userId        String    @map("user_id")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id        String   @id @default(uuid())
+  name      String // Nome do banco (ex: "Nubank", "Banco do Brasil")
+  type      BankType @default(CURRENT_ACCOUNT) @map("type") // Tipo de conta
+  balance   Decimal  @default(0) @db.Decimal(10, 2) // Saldo atual
+  isPrimary Boolean  @default(false) @map("is_primary") // Banco principal
+  color     String? // Cor para identificação visual
+  icon      String? // Ícone para identificação visual
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relacionamentos
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  receipts      Receipt[]
-  expenses      Expense[]
-  creditCardBills CreditCardBill[] // Faturas de cartão associadas a este banco
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  receipts            Receipt[]
+  expenses            Expense[]            @relation("ExpenseBank")
+  paidExpenses        Expense[]            @relation("ExpensePaidBank")
+  creditCardBills     CreditCardBill[] // Faturas de cartão associadas a este banco
+  savingsAccounts     SavingsAccount[] // Poupanças vinculadas a este banco
+  savingsTransactions SavingsTransaction[] // Transações de poupança usando este banco
 
-  @@map("banks")
   @@index([userId])
   @@index([isPrimary])
+  @@map("banks")
 }
 
 // ============================================
 // MODELO: CreditCardBill (Fatura do Cartão de Crédito)
 // ============================================
 model CreditCardBill {
-  id              String    @id @default(uuid())
-  description     String    // Descrição da fatura (ex: "Fatura Nubank - Janeiro 2026")
-  closingDate     DateTime  @map("closing_date") // Data de fechamento da fatura
-  dueDate         DateTime  @map("due_date") // Data de vencimento da fatura
+  id               String    @id @default(uuid())
+  description      String // Descrição da fatura (ex: "Fatura Nubank - Janeiro 2026")
+  closingDate      DateTime  @map("closing_date") // Data de fechamento da fatura
+  dueDate          DateTime  @map("due_date") // Data de vencimento da fatura
   bestPurchaseDate DateTime? @map("best_purchase_date") // Melhor data para fazer compras (para otimizar)
-  totalAmount     Decimal   @default(0) @db.Decimal(10, 2) @map("total_amount") // Total da fatura (calculado automaticamente)
-  paidAmount      Decimal   @default(0) @db.Decimal(10, 2) @map("paid_amount") // Valor já pago
-  isPaid          Boolean   @default(false) @map("is_paid") // Se a fatura foi paga
-  bankId          String?   @map("bank_id") // Banco do cartão
-  userId          String    @map("user_id")
-  notes           String?   @db.Text
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  totalAmount      Decimal   @default(0) @map("total_amount") @db.Decimal(10, 2) // Total da fatura (calculado automaticamente)
+  paidAmount       Decimal   @default(0) @map("paid_amount") @db.Decimal(10, 2) // Valor já pago
+  isPaid           Boolean   @default(false) @map("is_paid") // Se a fatura foi paga
+  bankId           String?   @map("bank_id") // Banco do cartão
+  userId           String    @map("user_id")
+  notes            String?   @db.Text
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
   // Relacionamentos
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bank            Bank?     @relation(fields: [bankId], references: [id], onDelete: SetNull)
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bank Bank? @relation(fields: [bankId], references: [id], onDelete: SetNull)
 
-  @@map("credit_card_bills")
   @@index([userId])
   @@index([closingDate])
   @@index([dueDate])
   @@index([bankId])
+  @@map("credit_card_bills")
 }
 
 enum BankType {
-  SALARY_ACCOUNT    // Conta Salário
-  CURRENT_ACCOUNT  // Conta Corrente
-  SAVINGS_ACCOUNT  // Conta Poupança
-  INVESTMENT       // Conta Investimento
-  CREDIT_CARD      // Cartão de Crédito
-  DIGITAL_WALLET   // Carteira Digital
-  OTHER            // Outros
+  SALARY_ACCOUNT // Conta Salário
+  CURRENT_ACCOUNT // Conta Corrente
+  SAVINGS_ACCOUNT // Conta Poupança
+  INVESTMENT // Conta Investimento
+  CREDIT_CARD // Cartão de Crédito
+  DIGITAL_WALLET // Carteira Digital
+  OTHER // Outros
 }
 
 // ============================================
 // MODELO: UserSettings (Configurações do Usuário)
 // ============================================
 model UserSettings {
-  id                    String    @id @default(uuid())
-  userId                String    @unique @map("user_id")
-  
+  id     String @id @default(uuid())
+  userId String @unique @map("user_id")
+
   // Preferências Financeiras
-  currency              String    @default("BRL") // Moeda padrão
-  dateFormat            String    @default("DD/MM/YYYY") @map("date_format")
-  numberFormat          String    @default("pt-BR") @map("number_format")
-  firstDayOfWeek        Int       @default(0) @map("first_day_of_week") // 0 = Domingo, 1 = Segunda
-  
+  currency       String @default("BRL") // Moeda padrão
+  dateFormat     String @default("DD/MM/YYYY") @map("date_format")
+  numberFormat   String @default("pt-BR") @map("number_format")
+  firstDayOfWeek Int    @default(0) @map("first_day_of_week") // 0 = Domingo, 1 = Segunda
+
   // Notificações
-  emailNotifications    Boolean   @default(true) @map("email_notifications")
-  budgetAlerts          Boolean   @default(true) @map("budget_alerts")
-  goalAlerts            Boolean   @default(true) @map("goal_alerts")
-  recurringPaymentAlerts Boolean  @default(true) @map("recurring_payment_alerts")
-  reportFrequency       String    @default("MONTHLY") @map("report_frequency") // DAILY, WEEKLY, MONTHLY, NEVER
-  
+  emailNotifications     Boolean @default(true) @map("email_notifications")
+  budgetAlerts           Boolean @default(true) @map("budget_alerts")
+  goalAlerts             Boolean @default(true) @map("goal_alerts")
+  recurringPaymentAlerts Boolean @default(true) @map("recurring_payment_alerts")
+  reportFrequency        String  @default("MONTHLY") @map("report_frequency") // DAILY, WEEKLY, MONTHLY, NEVER
+
   // Interface
-  theme                 String    @default("system") // light, dark, system
-  language              String    @default("pt-BR")
-  
+  theme    String @default("system") // light, dark, system
+  language String @default("pt-BR")
+
   // Privacidade e Segurança
-  sessionTimeout        Int       @default(30) @map("session_timeout") // minutos
+  sessionTimeout                     Int     @default(30) @map("session_timeout") // minutos
   requirePasswordForSensitiveActions Boolean @default(false) @map("require_password_for_sensitive_actions")
-  
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relacionamentos
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("user_settings")
   @@index([userId])
+  @@map("user_settings")
+}
+
+// ============================================
+// MODELO: SavingsAccount (Poupança)
+// ============================================
+model SavingsAccount {
+  id            String   @id @default(uuid())
+  name          String // Nome da poupança (ex: "Reserva de Emergência", "Viagem Europa")
+  description   String?  @db.Text // Descrição da poupança
+  currentAmount Decimal  @default(0) @map("current_amount") @db.Decimal(10, 2) // Valor atual guardado
+  targetAmount  Decimal? @map("target_amount") @db.Decimal(10, 2) // Meta de valor (opcional, pode estar vinculada a uma Goal)
+  bankId        String?  @map("bank_id") // Banco de onde o dinheiro será retirado/depositado
+  goalId        String?  @unique @map("goal_id") // Meta associada (opcional, uma meta pode ter apenas uma poupança)
+  color         String? // Cor para identificação visual
+  icon          String? // Ícone para identificação visual
+  userId        String   @map("user_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bank         Bank?                @relation(fields: [bankId], references: [id], onDelete: SetNull)
+  goal         Goal?                @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  transactions SavingsTransaction[] // Histórico de transações
+
+  @@index([userId])
+  @@index([bankId])
+  @@index([goalId])
+  @@map("savings_accounts")
+}
+
+// ============================================
+// MODELO: SavingsTransaction (Transação de Poupança)
+// ============================================
+model SavingsTransaction {
+  id               String                 @id @default(uuid())
+  savingsAccountId String                 @map("savings_account_id") // Poupança relacionada
+  type             SavingsTransactionType // DEPOSIT ou WITHDRAWAL
+  amount           Decimal                @db.Decimal(10, 2) // Valor da transação
+  description      String?                @db.Text // Descrição da transação
+  date             DateTime               @default(now()) // Data da transação
+  bankId           String?                @map("bank_id") // Banco usado na transação
+  userId           String                 @map("user_id")
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  savingsAccount SavingsAccount @relation(fields: [savingsAccountId], references: [id], onDelete: Cascade)
+  bank           Bank?          @relation(fields: [bankId], references: [id], onDelete: SetNull)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([savingsAccountId])
+  @@index([userId])
+  @@index([date])
+  @@index([type])
+  @@map("savings_transactions")
+}
+
+enum SavingsTransactionType {
+  DEPOSIT // Depósito (guardar dinheiro)
+  WITHDRAWAL // Retirada (retirar dinheiro)
 }

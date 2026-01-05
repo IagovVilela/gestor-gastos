@@ -13,6 +13,7 @@ import { SettingsModule } from './settings/settings.module';
 import { BanksModule } from './banks/banks.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { CreditCardBillsModule } from './credit-card-bills/credit-card-bills.module';
+import { SavingsAccountsModule } from './savings-accounts/savings-accounts.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { CreditCardBillsModule } from './credit-card-bills/credit-card-bills.mod
     BanksModule,
     DashboardModule,
     CreditCardBillsModule,
+    SavingsAccountsModule,
   ],
   controllers: [],
   providers: [],

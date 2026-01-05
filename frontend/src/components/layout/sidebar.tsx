@@ -17,6 +17,7 @@ import {
   History,
   Building2,
   FileText,
+  PiggyBank,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -26,8 +27,10 @@ const navigation = [
   { name: 'Despesas', href: '/expenses', icon: CreditCard },
   { name: 'Bancos', href: '/banks', icon: Building2 },
   { name: 'Faturas', href: '/credit-card-bills', icon: FileText },
+  { name: 'Faturas Futuras', href: '/future-bills', icon: CreditCard },
   { name: 'Categorias', href: '/categories', icon: FolderTree },
   { name: 'Metas', href: '/goals', icon: Target },
+  { name: 'Poupanças', href: '/savings-accounts', icon: PiggyBank },
   { name: 'Histórico', href: '/history', icon: History },
   { name: 'Alertas', href: '/alerts', icon: Bell },
   { name: 'Configurações', href: '/settings', icon: Settings },

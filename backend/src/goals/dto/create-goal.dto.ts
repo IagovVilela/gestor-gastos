@@ -34,6 +34,16 @@ export class CreateGoalDto {
   @IsString()
   @IsOptional()
   categoryId?: string;
+
+  @ApiProperty({ example: 'https://example.com/image.jpg', description: 'URL da imagem da meta', required: false })
+  @IsString()
+  @IsOptional()
+  imageUrl?: string;
+
+  @ApiProperty({ example: 'https://example.com/product', description: 'Link onde comprar a meta', required: false })
+  @IsString()
+  @IsOptional()
+  purchaseLink?: string;
 }
 
 

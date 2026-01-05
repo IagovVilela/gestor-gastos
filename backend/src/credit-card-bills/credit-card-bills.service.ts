@@ -49,19 +49,28 @@ export class CreditCardBillsService {
 
     // Período: do último fechamento (ou início do mês se não houver) até o fechamento atual
     const periodStart = lastBill 
-      ? new Date(lastBill.closingDate.getTime() + 1) // +1 dia após o último fechamento
+      ? new Date(lastBill.closingDate.getTime() + 24 * 60 * 60 * 1000) // +1 dia após o último fechamento
       : new Date(year, month, 1); // Início do mês se for a primeira fatura
     const periodEnd = closingDate;
 
-    const creditExpenses = await this.prisma.expense.findMany({
-      where: {
-        userId,
-        paymentMethod: 'CREDIT',
-        date: {
-          gte: periodStart,
-          lte: periodEnd,
-        },
+    const creditExpensesWhere: any = {
+      userId,
+      paymentMethod: 'CREDIT',
+      date: {
+        gte: periodStart,
+        lte: periodEnd,
       },
+    };
+    
+    // Só filtrar por banco se bankId não for null
+    if (bankId !== null) {
+      creditExpensesWhere.bankId = bankId;
+    } else {
+      creditExpensesWhere.bankId = null;
+    }
+
+    const creditExpenses = await this.prisma.expense.findMany({
+      where: creditExpensesWhere,
     });
 
     const totalAmount = creditExpenses.reduce((sum, expense) => {
@@ -121,19 +130,28 @@ export class CreditCardBillsService {
         });
         
         const periodStart = previousBill
-          ? new Date(new Date(previousBill.closingDate).getTime() + 1)
+          ? new Date(new Date(previousBill.closingDate).getTime() + 24 * 60 * 60 * 1000) // +1 dia após o último fechamento
           : new Date(closingDate.getFullYear(), closingDate.getMonth(), 1);
         const periodEnd = closingDate;
 
-        const creditExpenses = await this.prisma.expense.findMany({
-          where: {
-            userId,
-            paymentMethod: 'CREDIT',
-            date: {
-              gte: periodStart,
-              lte: periodEnd,
-            },
+        const creditExpensesWhere: any = {
+          userId,
+          paymentMethod: 'CREDIT',
+          date: {
+            gte: periodStart,
+            lte: periodEnd,
           },
+        };
+        
+        // Só filtrar por banco se billBankId não for null
+        if (billBankId !== null) {
+          creditExpensesWhere.bankId = billBankId;
+        } else {
+          creditExpensesWhere.bankId = null;
+        }
+
+        const creditExpenses = await this.prisma.expense.findMany({
+          where: creditExpensesWhere,
         });
 
         const totalAmount = creditExpenses.reduce((sum, expense) => {
@@ -236,19 +254,28 @@ export class CreditCardBillsService {
     });
 
     const periodStart = lastBill 
-      ? new Date(lastBill.closingDate.getTime() + 1)
+      ? new Date(lastBill.closingDate.getTime() + 24 * 60 * 60 * 1000) // +1 dia após o último fechamento
       : new Date(closingDate.getFullYear(), closingDate.getMonth(), 1);
     const periodEnd = closingDate;
 
-    const creditExpenses = await this.prisma.expense.findMany({
-      where: {
-        userId,
-        paymentMethod: 'CREDIT',
-        date: {
-          gte: periodStart,
-          lte: periodEnd,
-        },
+    const creditExpensesWhere: any = {
+      userId,
+      paymentMethod: 'CREDIT',
+      date: {
+        gte: periodStart,
+        lte: periodEnd,
       },
+    };
+    
+    // Só filtrar por banco se currentBankId não for null
+    if (currentBankId !== null) {
+      creditExpensesWhere.bankId = currentBankId;
+    } else {
+      creditExpensesWhere.bankId = null;
+    }
+
+    const creditExpenses = await this.prisma.expense.findMany({
+      where: creditExpensesWhere,
     });
 
     const totalAmount = creditExpenses.reduce((sum, expense) => {
@@ -273,14 +300,15 @@ export class CreditCardBillsService {
     });
   }
 
-  async getCurrentMonthBill(userId: string) {
+  async getCurrentMonthBill(userId: string, bankId?: string | null) {
     const today = new Date();
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-    return this.prisma.creditCardBill.findFirst({
+    const bill = await this.prisma.creditCardBill.findFirst({
       where: {
         userId,
+        bankId: bankId !== undefined ? bankId : undefined,
         closingDate: {
           gte: firstDayOfMonth,
           lte: lastDayOfMonth,
@@ -290,5 +318,692 @@ export class CreditCardBillsService {
         bank: true,
       },
     });
+
+    if (!bill) {
+      return null;
+    }
+
+    // Recalcular total para garantir que está atualizado
+    const closingDate = new Date(bill.closingDate);
+    const billBankId = bill.bankId;
+    
+    // Buscar última fatura anterior do mesmo banco
+    const previousBill = await this.prisma.creditCardBill.findFirst({
+      where: {
+        userId,
+        id: { not: bill.id },
+        bankId: billBankId,
+        closingDate: { lt: closingDate },
+      },
+      orderBy: {
+        closingDate: 'desc',
+      },
+    });
+
+    const periodStart = previousBill
+      ? new Date(previousBill.closingDate.getTime() + 24 * 60 * 60 * 1000)
+      : new Date(closingDate.getFullYear(), closingDate.getMonth(), 1);
+    const periodEnd = closingDate;
+
+    const creditExpensesWhere: any = {
+      userId,
+      paymentMethod: 'CREDIT',
+      date: {
+        gte: periodStart,
+        lte: periodEnd,
+      },
+    };
+
+    if (billBankId !== null) {
+      creditExpensesWhere.bankId = billBankId;
+    } else {
+      creditExpensesWhere.bankId = null;
+    }
+
+    const creditExpenses = await this.prisma.expense.findMany({
+      where: creditExpensesWhere,
+    });
+
+    const totalAmount = creditExpenses.reduce((sum, expense) => {
+      return sum + Number(expense.amount);
+    }, 0);
+
+    return {
+      ...bill,
+      totalAmount: new Prisma.Decimal(totalAmount),
+    };
+  }
+
+  async markAsPaid(id: string, userId: string) {
+    const bill = await this.findOne(id, userId);
+    
+    return this.prisma.creditCardBill.update({
+      where: { id },
+      data: { isPaid: true },
+      include: {
+        bank: true,
+      },
+    });
+  }
+
+  async markAsUnpaid(id: string, userId: string) {
+    const bill = await this.findOne(id, userId);
+    
+    return this.prisma.creditCardBill.update({
+      where: { id },
+      data: { isPaid: false },
+      include: {
+        bank: true,
+      },
+    });
+  }
+
+  /**
+   * Determina qual fatura uma compra pertence baseado na data da compra e no dia de fechamento
+   */
+  private determineBillForExpense(
+    expenseDate: Date,
+    closingDay: number,
+    lastBillClosingDate: Date | null,
+  ): { closingDate: Date; dueDate: Date; periodStart: Date; periodEnd: Date } {
+    const expenseYear = expenseDate.getFullYear();
+    const expenseMonth = expenseDate.getMonth();
+    const expenseDay = expenseDate.getDate();
+
+    // Se a compra é antes do dia de fechamento no mês atual, ela pertence à fatura deste mês
+    // Se é depois, pertence à fatura do próximo mês
+    let billYear = expenseYear;
+    let billMonth = expenseMonth;
+
+    if (expenseDay > closingDay) {
+      // Compra depois do fechamento → vai para próxima fatura
+      billMonth = expenseMonth + 1;
+      if (billMonth > 11) {
+        billMonth = 0;
+        billYear = expenseYear + 1;
+      }
+    }
+
+    // Calcular data de fechamento da fatura
+    const lastDayOfBillMonth = new Date(billYear, billMonth + 1, 0).getDate();
+    const adjustedClosingDay = Math.min(closingDay, lastDayOfBillMonth);
+    const closingDate = new Date(billYear, billMonth, adjustedClosingDay);
+
+    // Calcular data de vencimento (geralmente alguns dias após o fechamento)
+    // Vamos usar o mesmo padrão: se dueDay < closingDay, vencimento é no mês seguinte
+    // Por enquanto, vamos calcular baseado na última fatura ou usar um padrão
+    let dueYear = billYear;
+    let dueMonth = billMonth;
+    // Assumindo que o vencimento é sempre no mês seguinte ao fechamento
+    dueMonth = billMonth + 1;
+    if (dueMonth > 11) {
+      dueMonth = 0;
+      dueYear = billYear + 1;
+    }
+    const lastDayOfDueMonth = new Date(dueYear, dueMonth + 1, 0).getDate();
+    // Usar o mesmo dia de vencimento da última fatura ou padrão de 5 dias após fechamento
+    const dueDay = Math.min(closingDay, lastDayOfDueMonth); // Simplificado, pode ser ajustado
+    const dueDate = new Date(dueYear, dueMonth, dueDay);
+
+    // Calcular período da fatura
+    const periodStart = lastBillClosingDate
+      ? new Date(lastBillClosingDate.getTime() + 24 * 60 * 60 * 1000)
+      : new Date(billYear, billMonth, 1);
+    const periodEnd = closingDate;
+
+    return { closingDate, dueDate, periodStart, periodEnd };
+  }
+
+  /**
+   * Gera faturas futuras automaticamente baseado nas despesas de crédito existentes
+   * Apenas cria faturas se houver despesas de crédito que vão aparecer nelas
+   */
+  async generateFutureBills(userId: string, monthsAhead: number = 5, bankId?: string | null) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Buscar todas as faturas existentes para identificar padrões de fechamento
+    const existingBills = await this.prisma.creditCardBill.findMany({
+      where: {
+        userId,
+        bankId: bankId !== undefined ? bankId : undefined,
+      },
+      include: {
+        bank: true,
+      },
+      orderBy: {
+        closingDate: 'desc',
+      },
+    });
+
+    // Agrupar por banco para gerar faturas futuras para cada banco
+    const billsByBank = new Map<string | null, typeof existingBills>();
+    existingBills.forEach((bill) => {
+      const key = bill.bankId || 'null';
+      if (!billsByBank.has(key)) {
+        billsByBank.set(key, []);
+      }
+      billsByBank.get(key)!.push(bill);
+    });
+
+    const generatedBills = [];
+
+    for (const [bankKey, bills] of billsByBank.entries()) {
+      const currentBankId = bankKey === 'null' ? null : bankKey;
+      
+      if (bills.length === 0) {
+        // Se não há faturas existentes, não podemos gerar futuras sem saber o padrão
+        continue;
+      }
+
+      // Pegar a última fatura para usar como referência
+      const lastBill = bills[0];
+      const closingDay = lastBill.closingDate.getDate();
+      const dueDay = lastBill.dueDate.getDate();
+      const lastClosingDate = new Date(lastBill.closingDate);
+
+      // Gerar faturas para os próximos N meses
+      for (let i = 1; i <= monthsAhead; i++) {
+        const futureClosingDate = new Date(lastClosingDate);
+        futureClosingDate.setMonth(futureClosingDate.getMonth() + i);
+        
+        // Ajustar dia de fechamento se necessário
+        const lastDayOfMonth = new Date(
+          futureClosingDate.getFullYear(),
+          futureClosingDate.getMonth() + 1,
+          0,
+        ).getDate();
+        const adjustedClosingDay = Math.min(closingDay, lastDayOfMonth);
+        futureClosingDate.setDate(adjustedClosingDay);
+
+        // Verificar se já existe uma fatura para esta data
+        const existingBill = await this.prisma.creditCardBill.findFirst({
+          where: {
+            userId,
+            bankId: currentBankId,
+            closingDate: {
+              gte: new Date(futureClosingDate.getFullYear(), futureClosingDate.getMonth(), 1),
+              lt: new Date(futureClosingDate.getFullYear(), futureClosingDate.getMonth() + 1, 1),
+            },
+          },
+        });
+
+        if (existingBill) {
+          continue; // Já existe, pular
+        }
+
+        // Calcular período desta fatura
+        const previousBill = await this.prisma.creditCardBill.findFirst({
+          where: {
+            userId,
+            bankId: currentBankId,
+            closingDate: { lt: futureClosingDate },
+          },
+          orderBy: {
+            closingDate: 'desc',
+          },
+        });
+
+        const periodStart = previousBill
+          ? new Date(previousBill.closingDate.getTime() + 24 * 60 * 60 * 1000)
+          : new Date(futureClosingDate.getFullYear(), futureClosingDate.getMonth(), 1);
+        const periodEnd = futureClosingDate;
+
+        // Verificar se há despesas de crédito neste período
+        const creditExpensesWhere: any = {
+          userId,
+          paymentMethod: 'CREDIT',
+          date: {
+            gte: periodStart,
+            lte: periodEnd,
+          },
+        };
+
+        if (currentBankId !== null) {
+          creditExpensesWhere.bankId = currentBankId;
+        } else {
+          creditExpensesWhere.bankId = null;
+        }
+
+        const creditExpenses = await this.prisma.expense.findMany({
+          where: creditExpensesWhere,
+        });
+
+        // Buscar despesas recorrentes de crédito para este banco
+        const recurringExpensesWhere: any = {
+          userId,
+          paymentMethod: 'CREDIT',
+          isRecurring: true,
+          recurringType: 'MONTHLY',
+        };
+
+        if (currentBankId !== null) {
+          recurringExpensesWhere.bankId = currentBankId;
+        } else {
+          recurringExpensesWhere.bankId = null;
+        }
+
+        const recurringExpenses = await this.prisma.expense.findMany({
+          where: recurringExpensesWhere,
+        });
+
+        // Projetar despesas recorrentes para o período desta fatura
+        let hasRecurringInPeriod = false;
+        for (const recurringExpense of recurringExpenses) {
+          const expenseDate = new Date(recurringExpense.date);
+          const expenseDay = expenseDate.getDate();
+          const expenseMonth = expenseDate.getMonth();
+          const expenseYear = expenseDate.getFullYear();
+
+          const billMonth = futureClosingDate.getMonth();
+          const billYear = futureClosingDate.getFullYear();
+
+          // Se a fatura é do mesmo mês ou posterior, projetar a despesa
+          if (
+            billYear > expenseYear ||
+            (billYear === expenseYear && billMonth >= expenseMonth)
+          ) {
+            const projectedDate = new Date(billYear, billMonth, expenseDay);
+            const lastDayOfMonth = new Date(billYear, billMonth + 1, 0).getDate();
+            if (expenseDay > lastDayOfMonth) {
+              projectedDate.setDate(lastDayOfMonth);
+            }
+
+            if (projectedDate >= periodStart && projectedDate <= periodEnd) {
+              hasRecurringInPeriod = true;
+              break;
+            }
+          }
+        }
+
+        // Só criar fatura se houver despesas de crédito OU despesas recorrentes no período
+        if (creditExpenses.length === 0 && !hasRecurringInPeriod) {
+          continue;
+        }
+
+        // Calcular total incluindo despesas recorrentes projetadas
+        let totalAmount = creditExpenses.reduce((sum, expense) => {
+          return sum + Number(expense.amount);
+        }, 0);
+
+        // Adicionar despesas recorrentes projetadas ao total
+        for (const recurringExpense of recurringExpenses) {
+          const expenseDate = new Date(recurringExpense.date);
+          const expenseDay = expenseDate.getDate();
+          const expenseMonth = expenseDate.getMonth();
+          const expenseYear = expenseDate.getFullYear();
+
+          const billMonth = futureClosingDate.getMonth();
+          const billYear = futureClosingDate.getFullYear();
+
+          // Se a fatura é do mesmo mês ou posterior, projetar a despesa
+          if (
+            billYear > expenseYear ||
+            (billYear === expenseYear && billMonth >= expenseMonth)
+          ) {
+            const projectedDate = new Date(billYear, billMonth, expenseDay);
+            const lastDayOfMonth = new Date(billYear, billMonth + 1, 0).getDate();
+            if (expenseDay > lastDayOfMonth) {
+              projectedDate.setDate(lastDayOfMonth);
+            }
+
+            if (projectedDate >= periodStart && projectedDate <= periodEnd) {
+              // Verificar se já existe uma despesa real para esta data (evitar duplicação)
+              const alreadyExists = creditExpenses.some(
+                (e) =>
+                  e.description === recurringExpense.description &&
+                  e.amount.toString() === recurringExpense.amount.toString() &&
+                  new Date(e.date).getMonth() === billMonth &&
+                  new Date(e.date).getFullYear() === billYear,
+              );
+
+              if (!alreadyExists) {
+                totalAmount += Number(recurringExpense.amount);
+              }
+            }
+          }
+        }
+
+        // Calcular data de vencimento
+        let dueYear = futureClosingDate.getFullYear();
+        let dueMonth = futureClosingDate.getMonth();
+        if (dueDay < adjustedClosingDay) {
+          dueMonth = futureClosingDate.getMonth() + 1;
+          if (dueMonth > 11) {
+            dueMonth = 0;
+            dueYear = futureClosingDate.getFullYear() + 1;
+          }
+        }
+        const lastDayOfDueMonth = new Date(dueYear, dueMonth + 1, 0).getDate();
+        const adjustedDueDay = Math.min(dueDay, lastDayOfDueMonth);
+        const dueDate = new Date(dueYear, dueMonth, adjustedDueDay);
+
+        // Gerar descrição
+        const monthNames = [
+          'Janeiro',
+          'Fevereiro',
+          'Março',
+          'Abril',
+          'Maio',
+          'Junho',
+          'Julho',
+          'Agosto',
+          'Setembro',
+          'Outubro',
+          'Novembro',
+          'Dezembro',
+        ];
+        const bankName = lastBill.bank?.name || 'Cartão';
+        const description = `Fatura ${bankName} - ${monthNames[futureClosingDate.getMonth()]} ${futureClosingDate.getFullYear()}`;
+
+        const newBill = await this.prisma.creditCardBill.create({
+          data: {
+            description,
+            closingDate: futureClosingDate,
+            dueDate,
+            bestPurchaseDate: lastBill.bestPurchaseDate
+              ? new Date(
+                  futureClosingDate.getFullYear(),
+                  futureClosingDate.getMonth(),
+                  lastBill.bestPurchaseDate.getDate(),
+                )
+              : null,
+            totalAmount: new Prisma.Decimal(totalAmount),
+            userId,
+            bankId: currentBankId,
+            isPaid: false,
+          },
+          include: {
+            bank: true,
+          },
+        });
+
+        generatedBills.push(newBill);
+      }
+    }
+
+    return generatedBills;
+  }
+
+  /**
+   * Lista faturas futuras (ainda não fechadas)
+   */
+  async getFutureBills(
+    userId: string,
+    bankId?: string | null,
+    monthsAhead: number = 5,
+    startDate?: Date,
+    endDate?: Date,
+  ) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Gerar faturas futuras automaticamente se necessário
+    await this.generateFutureBills(userId, monthsAhead, bankId);
+
+    // Buscar faturas futuras (fechamento > hoje)
+    const where: any = {
+      userId,
+      closingDate: {
+        gt: startDate || today,
+      },
+    };
+
+    if (bankId !== undefined) {
+      where.bankId = bankId;
+    }
+
+    if (endDate) {
+      where.closingDate.lte = endDate;
+    }
+
+    const futureBills = await this.prisma.creditCardBill.findMany({
+      where,
+      include: {
+        bank: true,
+      },
+      orderBy: {
+        closingDate: 'asc',
+      },
+    });
+
+    // Para cada fatura futura, calcular as despesas que vão aparecer
+    const billsWithExpenses = await Promise.all(
+      futureBills.map(async (bill) => {
+        const closingDate = new Date(bill.closingDate);
+        const billBankId = bill.bankId;
+
+        // Buscar última fatura anterior do mesmo banco
+        const previousBill = await this.prisma.creditCardBill.findFirst({
+          where: {
+            userId,
+            id: { not: bill.id },
+            bankId: billBankId,
+            closingDate: { lt: closingDate },
+          },
+          orderBy: {
+            closingDate: 'desc',
+          },
+        });
+
+        const periodStart = previousBill
+          ? new Date(previousBill.closingDate.getTime() + 24 * 60 * 60 * 1000)
+          : new Date(closingDate.getFullYear(), closingDate.getMonth(), 1);
+        const periodEnd = closingDate;
+
+        const creditExpensesWhere: any = {
+          userId,
+          paymentMethod: 'CREDIT',
+          date: {
+            gte: periodStart,
+            lte: periodEnd,
+          },
+        };
+
+        if (billBankId !== null) {
+          creditExpensesWhere.bankId = billBankId;
+        } else {
+          creditExpensesWhere.bankId = null;
+        }
+
+        const creditExpenses = await this.prisma.expense.findMany({
+          where: creditExpensesWhere,
+          include: {
+            category: {
+              select: {
+                name: true,
+                color: true,
+              },
+            },
+            bank: {
+              select: {
+                name: true,
+              },
+            },
+          },
+          orderBy: {
+            date: 'asc',
+          },
+        });
+
+        // Buscar despesas recorrentes de crédito e projetá-las para esta fatura
+        const recurringExpensesWhere: any = {
+          userId,
+          paymentMethod: 'CREDIT',
+          isRecurring: true,
+          recurringType: 'MONTHLY', // Por enquanto apenas mensais
+        };
+
+        if (billBankId !== null) {
+          recurringExpensesWhere.bankId = billBankId;
+        } else {
+          recurringExpensesWhere.bankId = null;
+        }
+
+        const recurringExpenses = await this.prisma.expense.findMany({
+          where: recurringExpensesWhere,
+          include: {
+            category: {
+              select: {
+                name: true,
+                color: true,
+              },
+            },
+            bank: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        });
+
+        // Projetar despesas recorrentes para o período desta fatura
+        const projectedRecurringExpenses = [];
+        for (const recurringExpense of recurringExpenses) {
+          const expenseDate = new Date(recurringExpense.date);
+          const expenseDay = expenseDate.getDate();
+          const expenseMonth = expenseDate.getMonth();
+          const expenseYear = expenseDate.getFullYear();
+
+          // Calcular a data projetada para este mês da fatura
+          const billMonth = closingDate.getMonth();
+          const billYear = closingDate.getFullYear();
+
+          // Se a fatura é do mesmo mês ou posterior, projetar a despesa
+          if (
+            billYear > expenseYear ||
+            (billYear === expenseYear && billMonth >= expenseMonth)
+          ) {
+            // Calcular quantos meses se passaram desde a data original
+            const monthsDiff =
+              (billYear - expenseYear) * 12 + (billMonth - expenseMonth);
+
+            // Calcular a data projetada
+            const projectedDate = new Date(billYear, billMonth, expenseDay);
+            const lastDayOfMonth = new Date(billYear, billMonth + 1, 0).getDate();
+            if (expenseDay > lastDayOfMonth) {
+              projectedDate.setDate(lastDayOfMonth);
+            }
+
+            // Verificar se a data projetada está dentro do período da fatura
+            if (projectedDate >= periodStart && projectedDate <= periodEnd) {
+              // Verificar se já existe uma despesa real para esta data (evitar duplicação)
+              const alreadyExists = creditExpenses.some(
+                (e) =>
+                  e.description === recurringExpense.description &&
+                  e.amount.toString() === recurringExpense.amount.toString() &&
+                  new Date(e.date).getMonth() === billMonth &&
+                  new Date(e.date).getFullYear() === billYear,
+              );
+
+              if (!alreadyExists) {
+                projectedRecurringExpenses.push({
+                  id: `${recurringExpense.id}-projected-${billYear}-${billMonth}`,
+                  description: recurringExpense.description,
+                  amount: Number(recurringExpense.amount),
+                  date: projectedDate,
+                  isPaid: false,
+                  isProjected: true, // Marcar como projetada
+                  category: recurringExpense.category,
+                  bank: recurringExpense.bank,
+                });
+              }
+            }
+          }
+        }
+
+        // Combinar despesas reais e projetadas
+        const allExpenses = [
+          ...creditExpenses.map((e) => ({
+            id: e.id,
+            description: e.description,
+            amount: Number(e.amount),
+            date: e.date,
+            isPaid: e.isPaid,
+            isProjected: false,
+            category: e.category,
+            bank: e.bank,
+          })),
+          ...projectedRecurringExpenses,
+        ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        const totalAmount = allExpenses.reduce((sum, expense) => {
+          return sum + expense.amount;
+        }, 0);
+
+        return {
+          ...bill,
+          totalAmount: new Prisma.Decimal(totalAmount),
+          expenses: allExpenses,
+        };
+      }),
+    );
+
+    return billsWithExpenses;
+  }
+
+  async recalculateBillTotal(userId: string, bankId?: string | null) {
+    // Buscar todas as faturas do usuário (e do banco se especificado)
+    const bills = await this.prisma.creditCardBill.findMany({
+      where: {
+        userId,
+        bankId: bankId !== undefined ? bankId : undefined,
+      },
+      orderBy: {
+        closingDate: 'asc',
+      },
+    });
+
+    // Recalcular cada fatura
+    for (const bill of bills) {
+      const closingDate = new Date(bill.closingDate);
+      const billBankId = bill.bankId;
+      
+      // Buscar última fatura anterior do mesmo banco
+      const previousBill = await this.prisma.creditCardBill.findFirst({
+        where: {
+          userId,
+          id: { not: bill.id },
+          bankId: billBankId,
+          closingDate: { lt: closingDate },
+        },
+        orderBy: {
+          closingDate: 'desc',
+        },
+      });
+      
+      const periodStart = previousBill
+        ? new Date(new Date(previousBill.closingDate).getTime() + 24 * 60 * 60 * 1000)
+        : new Date(closingDate.getFullYear(), closingDate.getMonth(), 1);
+      const periodEnd = closingDate;
+
+      const creditExpensesWhere: any = {
+        userId,
+        paymentMethod: 'CREDIT',
+        date: {
+          gte: periodStart,
+          lte: periodEnd,
+        },
+      };
+      
+      if (billBankId !== null) {
+        creditExpensesWhere.bankId = billBankId;
+      } else {
+        creditExpensesWhere.bankId = null;
+      }
+
+      const creditExpenses = await this.prisma.expense.findMany({
+        where: creditExpensesWhere,
+      });
+
+      const totalAmount = creditExpenses.reduce((sum, expense) => {
+        return sum + Number(expense.amount);
+      }, 0);
+
+      await this.prisma.creditCardBill.update({
+        where: { id: bill.id },
+        data: { totalAmount: new Prisma.Decimal(totalAmount) },
+      });
+    }
   }
 }

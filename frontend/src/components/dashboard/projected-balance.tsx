@@ -95,6 +95,17 @@ export function ProjectedBalance() {
     };
 
     fetchData();
+    
+    // Escutar evento de atualização de saldo
+    const handleBalanceUpdate = () => {
+      fetchData();
+    };
+    
+    window.addEventListener('balanceUpdated', handleBalanceUpdate);
+    
+    return () => {
+      window.removeEventListener('balanceUpdated', handleBalanceUpdate);
+    };
   }, []);
 
   if (loading) {
