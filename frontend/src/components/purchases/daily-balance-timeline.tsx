@@ -209,7 +209,10 @@ export function DailyBalanceTimeline() {
       receiptsData.forEach((receipt: any) => {
         if (receipt.bankId) {
           // Extrair apenas a parte da data (sem hora) para evitar problemas de timezone
-          const receiptDateStr = receipt.date.split('T')[0];
+          // A data pode vir como '2026-01-05' ou '2026-01-05T10:08:00.000Z'
+          const receiptDateStr = receipt.date.includes('T') 
+            ? receipt.date.split('T')[0] 
+            : receipt.date.substring(0, 10);
           
           // Verificar se a receita está no período selecionado
           if (receiptDateStr >= startDate && receiptDateStr < endDate) {
@@ -236,13 +239,13 @@ export function DailyBalanceTimeline() {
 
       // Reverter despesas do período (adicionar de volta ao saldo para obter saldo inicial)
       const purchasesData = purchasesRes.data?.data || purchasesRes.data || [];
-      console.log('Período selecionado:', { startDate, endDate, periodFilter, selectedDate });
-      console.log('Total de compras recebidas:', purchasesData.length);
       purchasesData.forEach((purchase: Purchase) => {
         if (purchase.bank?.id && purchase.paymentMethod !== 'CREDIT') {
           // Extrair apenas a parte da data (sem hora) para evitar problemas de timezone
-          const purchaseDateStr = purchase.date.split('T')[0];
-          console.log('Verificando compra:', purchase.description, 'Data:', purchaseDateStr, 'No período?', purchaseDateStr >= startDate && purchaseDateStr < endDate);
+          // A data pode vir como '2026-01-05' ou '2026-01-05T10:08:00.000Z'
+          const purchaseDateStr = purchase.date.includes('T') 
+            ? purchase.date.split('T')[0] 
+            : purchase.date.substring(0, 10);
           
           // Verificar se a compra está no período selecionado
           if (purchaseDateStr >= startDate && purchaseDateStr < endDate) {
