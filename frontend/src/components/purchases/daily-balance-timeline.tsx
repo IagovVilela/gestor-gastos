@@ -509,13 +509,9 @@ export function DailyBalanceTimeline() {
         </p>
       </CardHeader>
       <CardContent>
-        {banks.length === 0 ? (
+        {banks.length === 0 && transactions.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground">Nenhuma conta encontrada</p>
-          </div>
-        ) : initialBalancesDisplay.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">Carregando saldos...</p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -572,7 +568,8 @@ export function DailyBalanceTimeline() {
                   </motion.div>
                 );
               })}
-            </div>
+              </div>
+            )}
 
             {/* Timeline de Transações */}
             {todayTransactions.length > 0 && (
