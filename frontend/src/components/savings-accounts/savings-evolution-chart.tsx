@@ -13,7 +13,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import api from '@/lib/api';
-import { formatCurrency } from '@/lib/formatters';
+import { formatCurrency, formatCurrencyCompact } from '@/lib/formatters';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { FadeIn } from '@/components/animations/fade-in';
@@ -225,7 +225,7 @@ export function SavingsEvolutionChart({ accountId, accountName }: SavingsEvoluti
               <YAxis
                 className="text-xs"
                 tick={{ fill: 'currentColor' }}
-                tickFormatter={(value) => formatCurrency(value, { compact: true })}
+                tickFormatter={(value) => formatCurrencyCompact(value)}
               />
               <Tooltip content={<CustomTooltip />} />
               <Legend />
