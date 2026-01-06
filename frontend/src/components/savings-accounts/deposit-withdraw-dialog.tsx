@@ -61,6 +61,7 @@ interface ProjectedBalanceData {
   };
   totalExpenses: number;
   creditCardTotal: number;
+  totalReceipts?: number;
 }
 
 export function DepositWithdrawDialog({
@@ -253,10 +254,10 @@ export function DepositWithdrawDialog({
   // Se for conta poupança, o saldo não muda, então o saldo projetado também não muda
   const projectedBalanceAfter = projectedBalance
     ? isSavingsAccountBank
-      ? projectedBalance.currentBalance + projectedBalance.totalReceipts - projectedBalance.totalExpenses - projectedBalance.creditCardTotal
+      ? projectedBalance.currentBalance + (projectedBalance.totalReceipts || 0) - projectedBalance.totalExpenses - projectedBalance.creditCardTotal
       : type === 'deposit'
-      ? projectedBalance.currentBalance - amountNum + projectedBalance.totalReceipts - projectedBalance.totalExpenses - projectedBalance.creditCardTotal
-      : projectedBalance.currentBalance + amountNum + projectedBalance.totalReceipts - projectedBalance.totalExpenses - projectedBalance.creditCardTotal
+      ? projectedBalance.currentBalance - amountNum + (projectedBalance.totalReceipts || 0) - projectedBalance.totalExpenses - projectedBalance.creditCardTotal
+      : projectedBalance.currentBalance + amountNum + (projectedBalance.totalReceipts || 0) - projectedBalance.totalExpenses - projectedBalance.creditCardTotal
     : null;
 
   // Validações e alertas
