@@ -327,22 +327,60 @@ export class ExpensesService {
       const oldBankId = oldExpense.bankId;
       const newBankId = updateExpenseDto.bankId !== undefined ? updateExpenseDto.bankId : oldBankId;
 
-      // Reverter saldo antigo se necessário
+      // Verificar se a despesa antiga foi descontada do saldo
       const oldPaymentDate = oldExpense.paymentDate || oldExpense.date;
       const oldShouldUpdate = oldBankId && oldPaymentDate <= today && oldExpense.paymentMethod !== PaymentMethod.CREDIT;
 
-      if (oldShouldUpdate && (oldBankId !== newBankId || oldAmount !== newAmount || !shouldUpdateBalance)) {
-        // Reverter saldo antigo
-        this.banksService
-          .updateBalanceFromTransaction(oldBankId, oldAmount, 'expense', 'delete')
-          .catch((err) => console.error('Erro ao reverter saldo do banco:', err));
+      // Se mudou de banco, precisa reverter no antigo e aplicar no novo
+      if (oldBankId !== newBankId) {
+        // Reverter no banco antigo se foi descontado
+        if (oldShouldUpdate && oldBankId) {
+          await this.banksService
+            .updateBalanceFromTransaction(oldBankId, oldAmount, 'expense', 'delete')
+            .catch((err) => console.error('Erro ao reverter saldo do banco antigo:', err));
+        }
+        
+        // Aplicar no banco novo se deve ser descontado
+        if (shouldUpdateBalance && newBankId) {
+          await this.banksService
+            .updateBalanceFromTransaction(newBankId, newAmount, 'expense', 'create')
+            .catch((err) => console.error('Erro ao atualizar saldo do banco novo:', err));
+        }
+      } 
+      // Se não mudou de banco, usar operação 'update' que calcula a diferença
+      else if (oldBankId && newBankId && oldBankId === newBankId) {
+        // Se ambos devem atualizar, usar update para ajustar diferença
+        if (oldShouldUpdate && shouldUpdateBalance) {
+          // Ambos foram/serão descontados, usar update para ajustar pela diferença
+          await this.banksService
+            .updateBalanceFromTransaction(newBankId, newAmount, 'expense', 'update', oldAmount)
+            .catch((err) => console.error('Erro ao atualizar saldo do banco:', err));
+        } 
+        // Se antiga foi descontada mas nova não deve ser, apenas reverter
+        else if (oldShouldUpdate && !shouldUpdateBalance) {
+          await this.banksService
+            .updateBalanceFromTransaction(oldBankId, oldAmount, 'expense', 'delete')
+            .catch((err) => console.error('Erro ao reverter saldo do banco:', err));
+        }
+        // Se antiga não foi descontada mas nova deve ser, apenas aplicar
+        else if (!oldShouldUpdate && shouldUpdateBalance) {
+          await this.banksService
+            .updateBalanceFromTransaction(newBankId, newAmount, 'expense', 'create')
+            .catch((err) => console.error('Erro ao atualizar saldo do banco:', err));
+        }
+        // Se nenhuma deve atualizar, não faz nada
       }
-
-      // Aplicar novo saldo se necessário
-      if (shouldUpdateBalance && (oldBankId !== newBankId || oldAmount !== newAmount || !oldShouldUpdate)) {
-        this.banksService
+      // Se não tinha banco antes mas agora tem, apenas aplicar
+      else if (!oldBankId && newBankId && shouldUpdateBalance) {
+        await this.banksService
           .updateBalanceFromTransaction(newBankId, newAmount, 'expense', 'create')
           .catch((err) => console.error('Erro ao atualizar saldo do banco:', err));
+      }
+      // Se tinha banco antes mas agora não tem, apenas reverter
+      else if (oldBankId && !newBankId && oldShouldUpdate) {
+        await this.banksService
+          .updateBalanceFromTransaction(oldBankId, oldAmount, 'expense', 'delete')
+          .catch((err) => console.error('Erro ao reverter saldo do banco:', err));
       }
     }
 
