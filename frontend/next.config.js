@@ -31,9 +31,8 @@ const nextConfig = {
       },
     ],
   },
-  env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
-  },
+  // Variáveis NEXT_PUBLIC_* são automaticamente disponibilizadas pelo Next.js
+  // Não precisamos configurar aqui, elas são injetadas durante o build
   // Configurações para melhorar hot reload no Windows (apenas em desenvolvimento)
   webpack: (config, { dev, isServer }) => {
     if (dev && !isServer) {

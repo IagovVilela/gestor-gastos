@@ -6,6 +6,8 @@ cmds = ["npm ci"]
 
 [phases.build]
 cmds = ["npm run build"]
+# Garantir que variáveis NEXT_PUBLIC_* estejam disponíveis durante o build
+env = { NEXT_PUBLIC_API_URL = "${NEXT_PUBLIC_API_URL}" }
 
 [start]
 cmd = "npm run start"

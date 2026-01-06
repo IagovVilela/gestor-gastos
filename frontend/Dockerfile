@@ -16,6 +16,11 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Passar variáveis de ambiente NEXT_PUBLIC_* durante o build
+# O Railway injeta essas variáveis como ARG durante o build
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+
 RUN npm run build
 
 # Production image, copy all the files and run next
