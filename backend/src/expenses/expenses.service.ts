@@ -613,8 +613,13 @@ export class ExpensesService {
     };
   }
 
-  async markAsPaid(id: string, userId: string, paymentBankId?: string) {
+  async markAsPaid(id: string, userId: string, paymentBankId?: string, payments?: Array<{ bankId: string; amount: number }>) {
     const expense = await this.findOne(id, userId);
+    
+    // Se foi fornecido pagamentos parciais, usar pagamento combinado
+    if (payments && payments.length > 0) {
+      return this.payExpenseCombined(id, userId, expense, payments);
+    }
     
     // Determinar qual banco usar para pagar
     const bankIdToUse = paymentBankId || expense.bankId;
@@ -674,6 +679,76 @@ export class ExpensesService {
       try {
         await this.creditCardBillsService.recalculateBillTotal(userId, expense.bankId);
         // Gerar/atualizar faturas futuras se necessário
+        await this.creditCardBillsService.generateFutureBills(userId, 5, expense.bankId);
+      } catch (error) {
+        console.error('Erro ao recalcular fatura:', error);
+      }
+    }
+
+    return updated;
+  }
+
+  private async payExpenseCombined(id: string, userId: string, expense: any, payments: Array<{ bankId: string; amount: number }>) {
+    const expenseAmount = Number(expense.amount);
+    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+
+    // Validar que o total dos pagamentos é igual ao valor da despesa
+    if (Math.abs(totalPaid - expenseAmount) > 0.01) {
+      throw new BadRequestException(
+        `O total dos pagamentos (${totalPaid}) deve ser igual ao valor da despesa (${expenseAmount})`
+      );
+    }
+
+    // Validar todos os bancos
+    for (const payment of payments) {
+      const bank = await this.prisma.bank.findUnique({
+        where: { id: payment.bankId },
+      });
+
+      if (!bank) {
+        throw new NotFoundException(`Banco ${payment.bankId} não encontrado`);
+      }
+
+      if (bank.userId !== userId) {
+        throw new ForbiddenException(`Banco ${payment.bankId} não pertence ao usuário`);
+      }
+    }
+
+    // Atualizar fatura como paga (usar o primeiro banco como paidBankId para compatibilidade)
+    const updated = await this.prisma.expense.update({
+      where: { id },
+      data: {
+        isPaid: true,
+        paidBankId: payments[0].bankId, // Usar o primeiro banco como referência
+      },
+      include: {
+        category: true,
+        bank: true,
+        paidBank: true,
+      },
+    });
+
+    // Atualizar saldos de todos os bancos usados
+    if (this.banksService && !expense.isPaid) {
+      for (const payment of payments) {
+        try {
+          await this.banksService.updateBalanceFromTransaction(
+            payment.bankId,
+            payment.amount,
+            'expense',
+            'create' // 'create' subtrai do saldo para despesas
+          );
+        } catch (error) {
+          console.error(`Erro ao atualizar saldo do banco ${payment.bankId}:`, error);
+          throw error;
+        }
+      }
+    }
+
+    // Recalcular fatura se for despesa de crédito
+    if (expense.paymentMethod === PaymentMethod.CREDIT && this.creditCardBillsService) {
+      try {
+        await this.creditCardBillsService.recalculateBillTotal(userId, expense.bankId);
         await this.creditCardBillsService.generateFutureBills(userId, 5, expense.bankId);
       } catch (error) {
         console.error('Erro ao recalcular fatura:', error);

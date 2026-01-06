@@ -83,7 +83,10 @@ export function CreditCardBill() {
   const [editingBillId, setEditingBillId] = useState<string | undefined>();
   const [markPaidDialogOpen, setMarkPaidDialogOpen] = useState(false);
   const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(null);
+  const [selectedExpense, setSelectedExpense] = useState<CreditExpense | null>(null);
   const [selectedBankId, setSelectedBankId] = useState<string>('');
+  const [expensePaymentMode, setExpensePaymentMode] = useState<'single' | 'combined'>('single');
+  const [expenseCombinedPayments, setExpenseCombinedPayments] = useState<Record<string, number>>({});
   const [banks, setBanks] = useState<Array<{ 
     id: string; 
     name: string; 
@@ -188,18 +191,28 @@ export function CreditCardBill() {
       handleTogglePaid(expenseId, false);
     } else {
       // Se não está pago, abrir diálogo para selecionar banco
+      const expense = data?.unpaid?.find(e => e.id === expenseId) || data?.paid?.find(e => e.id === expenseId);
       setSelectedExpenseId(expenseId);
+      setSelectedExpense(expense || null);
       setSelectedBankId('');
+      setExpensePaymentMode('single');
+      setExpenseCombinedPayments({});
       setMarkPaidDialogOpen(true);
     }
   };
 
-  const handleTogglePaid = async (expenseId: string, isPaid: boolean, paymentBankId?: string) => {
+  const handleTogglePaid = async (expenseId: string, isPaid: boolean, paymentBankId?: string, payments?: Array<{ bankId: string; amount: number }>) => {
     try {
       if (isPaid) {
-        await api.patch(`/expenses/${expenseId}/mark-paid`, {
-          paymentBankId: paymentBankId || undefined,
-        });
+        if (payments && payments.length > 0) {
+          await api.patch(`/expenses/${expenseId}/mark-paid`, {
+            payments,
+          });
+        } else {
+          await api.patch(`/expenses/${expenseId}/mark-paid`, {
+            paymentBankId: paymentBankId || undefined,
+          });
+        }
       } else {
         await api.patch(`/expenses/${expenseId}/mark-unpaid`);
       }
@@ -222,13 +235,49 @@ export function CreditCardBill() {
   };
 
   const handleConfirmMarkAsPaid = () => {
-    if (selectedExpenseId) {
+    if (!selectedExpenseId || !selectedExpense) return;
+
+    const expenseAmount = selectedExpense.amount;
+    const combinedTotal = Object.values(expenseCombinedPayments).reduce((sum, amount) => sum + amount, 0);
+    const remainingAmount = expenseAmount - combinedTotal;
+
+    if (expensePaymentMode === 'combined') {
+      // Validar que o total está correto
+      if (Math.abs(remainingAmount) > 0.01) {
+        toast({
+          title: 'Erro',
+          description: remainingAmount > 0 
+            ? `Ainda falta distribuir ${formatCurrency(remainingAmount)}`
+            : `O valor distribuído excede a despesa em ${formatCurrency(Math.abs(remainingAmount))}`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Criar array de pagamentos
+      const payments = Object.entries(expenseCombinedPayments)
+        .filter(([_, amount]) => amount > 0)
+        .map(([bankId, amount]) => ({
+          bankId,
+          amount,
+        }));
+
+      handleTogglePaid(selectedExpenseId, true, undefined, payments);
+    } else {
       handleTogglePaid(selectedExpenseId, true, selectedBankId || undefined);
-      setMarkPaidDialogOpen(false);
-      setSelectedExpenseId(null);
-      setSelectedBankId('');
     }
+
+    setMarkPaidDialogOpen(false);
+    setSelectedExpenseId(null);
+    setSelectedExpense(null);
+    setSelectedBankId('');
+    setExpensePaymentMode('single');
+    setExpenseCombinedPayments({});
   };
+
+  const expenseAmount = selectedExpense ? selectedExpense.amount : 0;
+  const expenseCombinedTotal = Object.values(expenseCombinedPayments).reduce((sum, amount) => sum + amount, 0);
+  const expenseRemainingAmount = expenseAmount - expenseCombinedTotal;
 
   if (loading) {
     return (
@@ -614,37 +663,279 @@ export function CreditCardBill() {
       />
 
       {/* Diálogo para selecionar banco ao marcar despesa como paga */}
-      <Dialog open={markPaidDialogOpen} onOpenChange={setMarkPaidDialogOpen}>
-        <DialogContent>
+      <Dialog open={markPaidDialogOpen} onOpenChange={(open) => {
+        setMarkPaidDialogOpen(open);
+        if (!open) {
+          setSelectedExpenseId(null);
+          setSelectedExpense(null);
+          setSelectedBankId('');
+          setExpensePaymentMode('single');
+          setExpenseCombinedPayments({});
+        }
+      }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Marcar Despesa como Paga</DialogTitle>
             <DialogDescription>
-              Selecione o banco usado para pagar esta despesa. O saldo será atualizado automaticamente.
+              Valor da despesa: <span className="font-semibold">{selectedExpense ? formatCurrency(selectedExpense.amount) : formatCurrency(0)}</span>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="paymentBank">Banco usado para pagar</Label>
-              <Select
-                value={selectedBankId || 'none'}
-                onValueChange={(value) => setSelectedBankId(value === 'none' ? '' : value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o banco (opcional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem banco específico</SelectItem>
-                  {banks.map((bank) => (
-                    <SelectItem key={bank.id} value={bank.id}>
-                      {bank.name}
-                    </SelectItem>
+            <Tabs value={expensePaymentMode} onValueChange={(value) => setExpensePaymentMode(value as 'single' | 'combined')}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="single">Pagamento Único</TabsTrigger>
+                <TabsTrigger value="combined">Pagamento Combinado</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="single" className="space-y-3">
+                <Label>Selecione uma conta para pagar a despesa completa</Label>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {banks.map((bank) => {
+                    const isSelected = selectedBankId === bank.id;
+                    const bankBalance = Number(bank.balance || 0);
+                    const balanceAfter = bankBalance - expenseAmount;
+                    const isSavingsAccount = bank.type === 'SAVINGS_ACCOUNT';
+                    const hasSavings = isSavingsAccount && bank.savingsAccount;
+
+                    return (
+                      <div
+                        key={bank.id}
+                        className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                          isSelected ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
+                        }`}
+                        onClick={() => setSelectedBankId(bank.id)}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <input
+                                type="radio"
+                                checked={isSelected}
+                                onChange={() => setSelectedBankId(bank.id)}
+                                className="mt-1"
+                              />
+                              <span className="font-semibold">{bank.name}</span>
+                              <Badge variant="outline" className="text-xs">
+                                {bankTypeLabels[bank.type] || bank.type}
+                              </Badge>
+                            </div>
+                            
+                            <div className="ml-6 space-y-1">
+                              <p className="text-sm">
+                                <span className="text-muted-foreground">Saldo atual: </span>
+                                <span className={`font-semibold ${bankBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {formatCurrency(bankBalance)}
+                                </span>
+                              </p>
+                              
+                              <p className="text-sm">
+                                <span className="text-muted-foreground">Saldo após pagamento: </span>
+                                <span className={`font-semibold ${balanceAfter >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {formatCurrency(balanceAfter)}
+                                </span>
+                              </p>
+
+                              {/* Diagnóstico para poupanças */}
+                              {isSavingsAccount && hasSavings && (
+                                <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-950/20 rounded border border-blue-200 dark:border-blue-800">
+                                  <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1">
+                                    📊 Diagnóstico da Poupança
+                                  </p>
+                                  <div className="space-y-1 text-xs text-blue-600 dark:text-blue-400">
+                                    <p>
+                                      <span className="font-medium">Poupança:</span> {bank.savingsAccount.name}
+                                    </p>
+                                    <p>
+                                      <span className="font-medium">Valor guardado:</span> {formatCurrency(Number(bank.savingsAccount.currentAmount))}
+                                    </p>
+                                    {bank.savingsAccount.targetAmount && (
+                                      <p>
+                                        <span className="font-medium">Meta:</span> {formatCurrency(Number(bank.savingsAccount.targetAmount))}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Aviso se saldo ficará negativo */}
+                              {!isSavingsAccount && balanceAfter < 0 && (
+                                <p className="text-xs text-red-600 dark:text-red-400 font-semibold mt-1">
+                                  ⚠️ Atenção: O saldo ficará negativo após o pagamento!
+                                </p>
+                              )}
+
+                              {/* Confirmação se saldo é suficiente */}
+                              {!isSavingsAccount && balanceAfter >= 0 && bankBalance >= expenseAmount && (
+                                <p className="text-xs text-green-600 dark:text-green-400 font-semibold mt-1">
+                                  ✓ Saldo suficiente para pagar a despesa
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Opção sem banco específico */}
+                  <div
+                    className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                      selectedBankId === 'none' ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
+                    }`}
+                    onClick={() => setSelectedBankId('none')}
+                  >
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        checked={selectedBankId === 'none'}
+                        onChange={() => setSelectedBankId('none')}
+                      />
+                      <span className="font-medium">Sem banco específico</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground ml-6 mt-1">
+                      O saldo não será atualizado automaticamente
+                    </p>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="combined" className="space-y-3">
+                <Label>Distribua o pagamento entre múltiplas contas</Label>
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {Object.entries(groupedBanks).map(([bankName, accounts]) => (
+                    <div key={bankName} className="border rounded-lg p-3">
+                      <h4 className="font-semibold mb-2 text-lg">{bankName}</h4>
+                      <div className="space-y-2">
+                        {accounts.map((account) => {
+                          const paymentAmount = expenseCombinedPayments[account.id] || 0;
+                          const accountBalance = Number(account.balance || 0);
+                          const balanceAfter = accountBalance - paymentAmount;
+                          const isSavingsAccount = account.type === 'SAVINGS_ACCOUNT';
+                          const hasSavings = isSavingsAccount && account.savingsAccount;
+                          const maxAmount = Math.min(accountBalance, expenseRemainingAmount + paymentAmount);
+
+                          return (
+                            <div key={account.id} className="p-2 border rounded bg-muted/30">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="text-xs">
+                                    {bankTypeLabels[account.type] || account.type}
+                                  </Badge>
+                                  {isSavingsAccount && hasSavings && (
+                                    <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
+                                      Poupança: {account.savingsAccount.name}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="text-sm">
+                                  <span className="text-muted-foreground">Saldo: </span>
+                                  <span className={`font-semibold ${accountBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {formatCurrency(accountBalance)}
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <Label htmlFor={`expense-amount-${account.id}`} className="text-xs w-24">
+                                    Valor a pagar:
+                                  </Label>
+                                  <Input
+                                    id={`expense-amount-${account.id}`}
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    max={maxAmount}
+                                    value={paymentAmount || ''}
+                                    onChange={(e) => {
+                                      const value = parseFloat(e.target.value) || 0;
+                                      setExpenseCombinedPayments({
+                                        ...expenseCombinedPayments,
+                                        [account.id]: Math.min(value, maxAmount),
+                                      });
+                                    }}
+                                    placeholder="0,00"
+                                    className="flex-1"
+                                  />
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setExpenseCombinedPayments({
+                                        ...expenseCombinedPayments,
+                                        [account.id]: Math.min(accountBalance, expenseRemainingAmount + paymentAmount),
+                                      });
+                                    }}
+                                  >
+                                    Máx
+                                  </Button>
+                                </div>
+                                
+                                {paymentAmount > 0 && (
+                                  <div className="text-xs space-y-1">
+                                    <p>
+                                      <span className="text-muted-foreground">Saldo após: </span>
+                                      <span className={`font-semibold ${balanceAfter >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        {formatCurrency(balanceAfter)}
+                                      </span>
+                                    </p>
+                                    {balanceAfter < 0 && (
+                                      <p className="text-red-600 dark:text-red-400 font-semibold">
+                                        ⚠️ Saldo ficará negativo!
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+
+                                {isSavingsAccount && hasSavings && paymentAmount > 0 && (
+                                  <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-950/20 rounded border border-blue-200 dark:border-blue-800">
+                                    <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1">
+                                      📊 Diagnóstico da Poupança
+                                    </p>
+                                    <div className="space-y-1 text-xs text-blue-600 dark:text-blue-400">
+                                      <p>
+                                        <span className="font-medium">Valor guardado:</span> {formatCurrency(Number(account.savingsAccount.currentAmount))}
+                                      </p>
+                                      {account.savingsAccount.targetAmount && (
+                                        <p>
+                                          <span className="font-medium">Meta:</span> {formatCurrency(Number(account.savingsAccount.targetAmount))}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Se não selecionar, o sistema usará o banco da despesa ou não atualizará o saldo.
-              </p>
-            </div>
+                </div>
+                
+                <div className="p-3 border rounded-lg bg-muted/50">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold">Total distribuído:</span>
+                    <span className={`font-bold text-lg ${Math.abs(expenseRemainingAmount) < 0.01 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatCurrency(expenseCombinedTotal)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-sm text-muted-foreground">Restante:</span>
+                    <span className={`font-semibold ${Math.abs(expenseRemainingAmount) < 0.01 ? 'text-green-600' : expenseRemainingAmount > 0 ? 'text-yellow-600' : 'text-red-600'}`}>
+                      {formatCurrency(expenseRemainingAmount)}
+                    </span>
+                  </div>
+                  {Math.abs(expenseRemainingAmount) > 0.01 && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {expenseRemainingAmount > 0 
+                        ? '⚠️ Ainda falta distribuir parte do valor'
+                        : '⚠️ O valor distribuído excede o valor da despesa'}
+                    </p>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
           <DialogFooter>
             <Button
@@ -652,12 +943,18 @@ export function CreditCardBill() {
               onClick={() => {
                 setMarkPaidDialogOpen(false);
                 setSelectedExpenseId(null);
+                setSelectedExpense(null);
                 setSelectedBankId('');
+                setExpensePaymentMode('single');
+                setExpenseCombinedPayments({});
               }}
             >
               Cancelar
             </Button>
-            <Button onClick={handleConfirmMarkAsPaid}>
+            <Button 
+              onClick={handleConfirmMarkAsPaid}
+              disabled={expensePaymentMode === 'combined' && Math.abs(expenseRemainingAmount) > 0.01}
+            >
               Confirmar
             </Button>
           </DialogFooter>

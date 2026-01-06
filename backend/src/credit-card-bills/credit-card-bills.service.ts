@@ -107,6 +107,12 @@ export class CreditCardBillsService {
       where: { userId },
       include: {
         bank: true,
+        paidBank: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
       orderBy: {
         closingDate: 'desc',
@@ -176,6 +182,12 @@ export class CreditCardBillsService {
       where: { id },
       include: {
         bank: true,
+        paidBank: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
 
@@ -187,7 +199,78 @@ export class CreditCardBillsService {
       throw new ForbiddenException('Fatura não pertence ao usuário');
     }
 
-    return bill;
+    // Buscar despesas do período da fatura
+    const closingDate = new Date(bill.closingDate);
+    const billBankId = bill.bankId;
+    
+    // Buscar última fatura anterior do mesmo banco
+    const previousBill = await this.prisma.creditCardBill.findFirst({
+      where: {
+        userId,
+        id: { not: id },
+        bankId: billBankId,
+        closingDate: { lt: closingDate },
+      },
+      orderBy: {
+        closingDate: 'desc',
+      },
+    });
+    
+    const periodStart = previousBill
+      ? new Date(new Date(previousBill.closingDate).getTime() + 24 * 60 * 60 * 1000) // +1 dia após o último fechamento
+      : new Date(closingDate.getFullYear(), closingDate.getMonth(), 1);
+    const periodEnd = closingDate;
+
+    const creditExpensesWhere: any = {
+      userId,
+      paymentMethod: 'CREDIT',
+      date: {
+        gte: periodStart,
+        lte: periodEnd,
+      },
+    };
+    
+    // Só filtrar por banco se billBankId não for null
+    if (billBankId !== null) {
+      creditExpensesWhere.bankId = billBankId;
+    } else {
+      creditExpensesWhere.bankId = null;
+    }
+
+    const expenses = await this.prisma.expense.findMany({
+      where: creditExpensesWhere,
+      include: {
+        category: {
+          select: {
+            name: true,
+            color: true,
+          },
+        },
+        bank: {
+          select: {
+            name: true,
+          },
+        },
+        paidBank: {
+          select: {
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        date: 'desc',
+      },
+    });
+
+    const totalAmount = expenses.reduce((sum, expense) => {
+      return sum + Number(expense.amount);
+    }, 0);
+
+    return {
+      ...bill,
+      totalAmount: new Prisma.Decimal(totalAmount),
+      expenses,
+    };
   }
 
   async update(id: string, userId: string, updateCreditCardBillDto: UpdateCreditCardBillDto) {

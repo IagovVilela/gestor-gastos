@@ -95,13 +95,18 @@ export class ExpensesController {
   }
 
   @Patch(':id/mark-paid')
-  @ApiOperation({ summary: 'Marcar despesa como paga' })
+  @ApiOperation({ summary: 'Marcar despesa como paga (suporta pagamento único ou combinado)' })
   @ApiResponse({ status: 200, description: 'Despesa marcada como paga' })
   markAsPaid(
     @CurrentUser() user: { id: string },
     @Param('id') id: string,
     @Body() markPaidDto?: MarkPaidDto,
   ) {
+    // Se foi fornecido payments, usar pagamento combinado
+    if (markPaidDto?.payments && markPaidDto.payments.length > 0) {
+      return this.expensesService.markAsPaid(id, user.id, undefined, markPaidDto.payments);
+    }
+    // Caso contrário, usar pagamento único (compatibilidade com código antigo)
     return this.expensesService.markAsPaid(id, user.id, markPaidDto?.paymentBankId);
   }
 
