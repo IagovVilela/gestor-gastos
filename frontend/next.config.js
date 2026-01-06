@@ -1,21 +1,32 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-        images: {
-          domains: ['localhost'],
-          remotePatterns: [
-            {
-              protocol: 'http',
-              hostname: 'localhost',
-              port: '3001',
-              pathname: '/uploads/**',
-            },
-          ],
-        },
+  output: 'standalone',
+  images: {
+    domains: ['localhost'],
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '3001',
+        pathname: '/uploads/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.railway.app',
+        pathname: '/uploads/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.up.railway.app',
+        pathname: '/uploads/**',
+      },
+    ],
+  },
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
   },
-  // Configurações para melhorar hot reload no Windows
+  // Configurações para melhorar hot reload no Windows (apenas em desenvolvimento)
   webpack: (config, { dev, isServer }) => {
     if (dev && !isServer) {
       // Configura polling para detectar mudanças no Windows
