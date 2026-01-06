@@ -29,6 +29,7 @@ interface Purchase {
   description: string;
   amount: number;
   date: string;
+  createdAt?: string;
   paymentMethod?: string;
   bank?: {
     name: string;
@@ -87,35 +88,6 @@ export function PurchaseList() {
           startDate: format(today, 'yyyy-MM-dd'),
           endDate: format(today, 'yyyy-MM-dd'),
         };
-    }
-  };
-
-  const fetchPurchases = async () => {
-    setLoading(true);
-    try {
-      const { startDate, endDate } = getDateRange();
-      // Adicionar um dia ao endDate para incluir o dia inteiro (até 23:59:59)
-      const endDatePlusOne = new Date(endDate);
-      endDatePlusOne.setDate(endDatePlusOne.getDate() + 1);
-      const endDateFormatted = format(endDatePlusOne, 'yyyy-MM-dd');
-      
-      const response = await api.get('/expenses', {
-        params: {
-          startDate,
-          endDate: endDateFormatted,
-          limit: 50,
-        },
-      });
-      setPurchases(response.data.data || []);
-    } catch (error) {
-      console.error('Erro ao carregar compras:', error);
-      toast({
-        title: 'Erro',
-        description: 'Erro ao carregar compras',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
     }
   };
 
