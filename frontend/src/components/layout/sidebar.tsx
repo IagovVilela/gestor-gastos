@@ -18,12 +18,14 @@ import {
   Building2,
   FileText,
   PiggyBank,
+  ShoppingCart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Receitas', href: '/receipts', icon: Receipt },
+  { name: 'Compras', href: '/compras', icon: ShoppingCart },
   { name: 'Despesas', href: '/expenses', icon: CreditCard },
   { name: 'Bancos', href: '/banks', icon: Building2 },
   { name: 'Faturas', href: '/credit-card-bills', icon: FileText },

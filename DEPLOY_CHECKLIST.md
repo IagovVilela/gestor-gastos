@@ -81,3 +81,4 @@ Use este checklist para garantir que tudo está configurado corretamente antes d
 - [ ] Configurar backup do banco de dados
 - [ ] Configurar CI/CD para deploy automático
 
+
