@@ -262,8 +262,8 @@ export function DepositWithdrawDialog({
 
   // Validações e alertas
   // Se for conta poupança, não verificar saldo insuficiente (apenas associamos o valor)
-  const hasInsufficientBalance = type === 'deposit' && selectedBank && !isSavingsAccountBank && amountNum > selectedBank.balance;
-  const hasInsufficientSavings = type === 'withdraw' && account && amountNum > account.currentAmount;
+  const hasInsufficientBalance = !!(type === 'deposit' && selectedBank && !isSavingsAccountBank && amountNum > selectedBank.balance);
+  const hasInsufficientSavings = !!(type === 'withdraw' && account && amountNum > account.currentAmount);
   const willBeNegative = !isSavingsAccountBank && bankBalanceAfter < 0;
   
   // Calcular margem de segurança (10% das despesas mensais ou mínimo de R$ 500)
