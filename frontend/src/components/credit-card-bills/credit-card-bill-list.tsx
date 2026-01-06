@@ -636,7 +636,7 @@ export function CreditCardBillList() {
                                   <Badge variant="outline" className="text-xs">
                                     {bankTypeLabels[account.type] || account.type}
                                   </Badge>
-                                  {isSavingsAccount && hasSavings && (
+                                  {isSavingsAccount && hasSavings && account.savingsAccount && (
                                     <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
                                       Poupança: {account.savingsAccount.name}
                                     </Badge>
@@ -702,7 +702,7 @@ export function CreditCardBillList() {
                                   </div>
                                 )}
 
-                                {isSavingsAccount && hasSavings && paymentAmount > 0 && (
+                                {isSavingsAccount && hasSavings && account.savingsAccount && paymentAmount > 0 && (
                                   <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-950/20 rounded border border-blue-200 dark:border-blue-800">
                                     <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1">
                                       📊 Diagnóstico da Poupança
