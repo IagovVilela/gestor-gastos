@@ -717,8 +717,8 @@ export function DailyBalanceTimeline() {
                               </div>
                               <div className="flex items-center gap-2 flex-shrink-0">
                                 <div className="text-right">
-                                  <p className="text-lg font-bold text-destructive">
-                                    -{formatCurrency(transaction.amount)}
+                                  <p className={`text-lg font-bold ${transaction.type === 'receipt' ? 'text-primary' : 'text-destructive'}`}>
+                                    {transaction.type === 'receipt' ? '+' : '-'}{formatCurrency(transaction.amount)}
                                   </p>
                                 </div>
                                 <div className="flex flex-col gap-1">
