@@ -94,14 +94,53 @@ export function PurchaseList() {
     setLoading(true);
     try {
       const { startDate, endDate } = getDateRange();
+      // Adicionar um dia ao endDate para incluir o dia inteiro (até 23:59:59)
+      const endDatePlusOne = new Date(endDate);
+      endDatePlusOne.setDate(endDatePlusOne.getDate() + 1);
+      const endDateFormatted = format(endDatePlusOne, 'yyyy-MM-dd');
+      
       const response = await api.get('/expenses', {
         params: {
           startDate,
-          endDate,
+          endDate: endDateFormatted,
           limit: 50,
         },
       });
       setPurchases(response.data.data || []);
+    } catch (error) {
+      console.error('Erro ao carregar compras:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao carregar compras',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPurchases = async () => {
+    setLoading(true);
+    try {
+      const { startDate, endDate } = getDateRange();
+      // Adicionar um dia ao endDate para incluir o dia inteiro (até 23:59:59)
+      const endDatePlusOne = new Date(endDate);
+      endDatePlusOne.setDate(endDatePlusOne.getDate() + 1);
+      const endDateFormatted = format(endDatePlusOne, 'yyyy-MM-dd');
+      
+      const response = await api.get('/expenses', {
+        params: {
+          startDate,
+          endDate: endDateFormatted,
+          limit: 50,
+        },
+      });
+      // Ordenar por data de criação (mais recentes primeiro)
+      const purchasesData = response.data.data || [];
+      purchasesData.sort((a: Purchase, b: Purchase) => 
+        new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime()
+      );
+      setPurchases(purchasesData);
     } catch (error) {
       console.error('Erro ao carregar compras:', error);
       toast({
@@ -142,7 +181,12 @@ export function PurchaseList() {
   const handleFormSuccess = () => {
     setFormOpen(false);
     setEditingPurchase(undefined);
-    fetchPurchases();
+    // Pequeno delay para garantir que o backend processou a atualização
+    setTimeout(() => {
+      fetchPurchases();
+      // Disparar evento para atualizar timeline também
+      window.dispatchEvent(new CustomEvent('balanceUpdated'));
+    }, 500);
   };
 
   const handleFormClose = () => {
