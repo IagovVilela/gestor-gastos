@@ -248,7 +248,11 @@ export function DailyBalanceTimeline() {
         
         // Verificar se a compra está no período selecionado PRIMEIRO
         if (purchaseDateStr >= startDate && purchaseDateStr < endDate) {
-          // Só processar se tiver banco e não for crédito
+          // Adicionar TODAS as compras do período à lista (incluindo crédito)
+          // Crédito não afeta saldo, mas deve aparecer na timeline
+          todayPurchases.push(purchase);
+          
+          // Só processar saldo se tiver banco e não for crédito
           if (purchase.bank?.id && purchase.paymentMethod !== 'CREDIT') {
             // Verificar se já foi descontada do saldo
             // A despesa só é descontada se paymentDate <= hoje (ou <= data selecionada para dias passados)
@@ -276,11 +280,6 @@ export function DailyBalanceTimeline() {
               const bankId = purchase.bank.id;
               initialBalances[bankId] = (initialBalances[bankId] || 0) + purchaseAmount;
             }
-            // Sempre adicionar à lista de compras do período para mostrar na timeline
-            todayPurchases.push(purchase);
-          } else if (!purchase.bank?.id) {
-            // Se não tem banco, ainda adicionar para mostrar (mas não afeta saldo)
-            todayPurchases.push(purchase);
           }
         }
       });
@@ -321,10 +320,13 @@ export function DailyBalanceTimeline() {
       const currentBalances: Record<string, number> = { ...initialBalances };
 
       sortedPurchases.forEach((purchase: Purchase) => {
-        // Processar apenas compras com banco e que não sejam crédito (para afetar saldo)
-        // Mas mostrar todas as compras do período na timeline
+        // Mostrar TODAS as compras do período na timeline (incluindo crédito)
+        const purchaseAmount = typeof purchase.amount === 'string' 
+          ? parseFloat(purchase.amount) 
+          : Number(purchase.amount);
+        
+        // Se tem banco e não é crédito, calcular saldo
         if (purchase.bank?.id && purchase.paymentMethod !== 'CREDIT') {
-          // As compras já foram filtradas no loop anterior, então processar todas
           // Verificar se já foi descontada (para calcular saldo corretamente)
           const effectivePaymentDate = purchase.paymentDate 
             ? new Date(purchase.paymentDate) 
@@ -338,9 +340,6 @@ export function DailyBalanceTimeline() {
             wasDeducted = effectivePaymentDate <= endDateObj;
           }
           
-          const purchaseAmount = typeof purchase.amount === 'string' 
-            ? parseFloat(purchase.amount) 
-            : Number(purchase.amount);
           const bankId = purchase.bank.id;
           
           // Se foi descontada, calcular saldo antes e depois
@@ -374,6 +373,26 @@ export function DailyBalanceTimeline() {
             bankType: bankInfo?.type,
             balanceBefore,
             balanceAfter,
+            paymentMethod: purchase.paymentMethod,
+          });
+        } else {
+          // Compras sem banco ou de crédito: mostrar na timeline mas sem afetar saldo
+          const bankInfo = purchase.bank ? banksRes.data.find((b: Bank) => b.id === purchase.bank!.id) : null;
+          const bankId = purchase.bank?.id;
+          const balanceBefore = bankId ? (currentBalances[bankId] || initialBalances[bankId] || 0) : 0;
+          
+          timeline.push({
+            id: purchase.id,
+            type: 'purchase',
+            description: purchase.description,
+            amount: purchaseAmount,
+            timestamp: purchase.createdAt || purchase.date,
+            bankId: purchase.bank?.id,
+            bankName: purchase.bank?.name || 'Sem banco',
+            bankColor: purchase.bank?.color,
+            bankType: bankInfo?.type,
+            balanceBefore,
+            balanceAfter: balanceBefore, // Crédito não afeta saldo
             paymentMethod: purchase.paymentMethod,
           });
         }
