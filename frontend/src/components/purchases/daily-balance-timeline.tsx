@@ -59,7 +59,7 @@ interface Purchase {
 
 interface DailyTransaction {
   id: string;
-  type: 'purchase' | 'initial';
+  type: 'purchase' | 'receipt' | 'initial';
   description: string;
   amount: number;
   timestamp: string;
@@ -206,16 +206,21 @@ export function DailyBalanceTimeline() {
 
       // Reverter receitas do período (subtrair do saldo atual para obter saldo inicial)
       const receiptsData = receiptsRes.data?.data || receiptsRes.data || [];
+      const todayReceipts: any[] = [];
+      
       receiptsData.forEach((receipt: any) => {
-        if (receipt.bankId) {
-          // Extrair apenas a parte da data (sem hora) para evitar problemas de timezone
-          // A data pode vir como '2026-01-05' ou '2026-01-05T10:08:00.000Z'
-          const receiptDateStr = receipt.date.includes('T') 
-            ? receipt.date.split('T')[0] 
-            : receipt.date.substring(0, 10);
+        // Extrair apenas a parte da data (sem hora) para evitar problemas de timezone
+        const receiptDateStr = receipt.date.includes('T') 
+          ? receipt.date.split('T')[0] 
+          : receipt.date.substring(0, 10);
+        
+        // Verificar se a receita está no período selecionado
+        if (receiptDateStr >= startDate && receiptDateStr < endDate) {
+          // Adicionar à lista de receitas do período
+          todayReceipts.push(receipt);
           
-          // Verificar se a receita está no período selecionado
-          if (receiptDateStr >= startDate && receiptDateStr < endDate) {
+          // Se tem banco, processar saldo
+          if (receipt.bankId) {
             // Se é hoje, verificar se a receita já foi adicionada ao saldo
             // Se é dia passado, assumir que foi adicionada
             const receiptDateObj = new Date(receipt.date);
@@ -310,91 +315,142 @@ export function DailyBalanceTimeline() {
             });
       });
 
-      // Adicionar compras do período em ordem cronológica
-      // As compras já foram filtradas no loop anterior, então não precisa verificar novamente
-      const sortedPurchases = todayPurchases.sort((a: Purchase, b: Purchase) => 
-        new Date(a.createdAt || a.date).getTime() - new Date(b.createdAt || b.date).getTime()
+      // Adicionar compras e receitas do período em ordem cronológica
+      // Criar array unificado de todas as transações
+      const allTransactions: Array<{ type: 'purchase' | 'receipt'; data: any; timestamp: string }> = [
+        ...todayPurchases.map(p => ({ type: 'purchase' as const, data: p, timestamp: p.createdAt || p.date })),
+        ...todayReceipts.map(r => ({ type: 'receipt' as const, data: r, timestamp: r.createdAt || r.date }))
+      ];
+      
+      // Ordenar por timestamp
+      allTransactions.sort((a, b) => 
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
       );
 
       // Manter controle do saldo atual de cada banco durante o processamento
       const currentBalances: Record<string, number> = { ...initialBalances };
 
-      sortedPurchases.forEach((purchase: Purchase) => {
-        // Mostrar TODAS as compras do período na timeline (incluindo crédito)
-        const purchaseAmount = typeof purchase.amount === 'string' 
-          ? parseFloat(purchase.amount) 
-          : Number(purchase.amount);
-        
-        // Se tem banco e não é crédito, calcular saldo
-        if (purchase.bank?.id && purchase.paymentMethod !== 'CREDIT') {
-          // Verificar se já foi descontada (para calcular saldo corretamente)
-          const effectivePaymentDate = purchase.paymentDate 
-            ? new Date(purchase.paymentDate) 
-            : new Date(purchase.date);
-          effectivePaymentDate.setHours(0, 0, 0, 0);
+      // Processar todas as transações (compras e receitas) em ordem cronológica
+      allTransactions.forEach((transaction) => {
+        if (transaction.type === 'purchase') {
+          const purchase = transaction.data as Purchase;
+          const purchaseAmount = typeof purchase.amount === 'string' 
+            ? parseFloat(purchase.amount) 
+            : Number(purchase.amount);
           
-          let wasDeducted = false;
-          if (isToday) {
-            wasDeducted = effectivePaymentDate <= today;
-          } else {
-            wasDeducted = effectivePaymentDate <= endDateObj;
-          }
-          
-          const bankId = purchase.bank.id;
-          
-          // Se foi descontada, calcular saldo antes e depois
-          // Se não foi descontada ainda, mostrar saldo atual (não muda)
-          let balanceBefore: number;
-          let balanceAfter: number;
-          
-          if (wasDeducted) {
-            balanceBefore = currentBalances[bankId] || initialBalances[bankId] || 0;
-            balanceAfter = balanceBefore - purchaseAmount;
-            // Atualizar saldo atual para próxima compra
-            currentBalances[bankId] = balanceAfter;
-          } else {
-            // Se não foi descontada ainda, o saldo não muda
-            balanceBefore = currentBalances[bankId] || initialBalances[bankId] || 0;
-            balanceAfter = balanceBefore;
-          }
+          // Se tem banco e não é crédito, calcular saldo
+          if (purchase.bank?.id && purchase.paymentMethod !== 'CREDIT') {
+            // Verificar se já foi descontada (para calcular saldo corretamente)
+            const effectivePaymentDate = purchase.paymentDate 
+              ? new Date(purchase.paymentDate) 
+              : new Date(purchase.date);
+            effectivePaymentDate.setHours(0, 0, 0, 0);
+            
+            let wasDeducted = false;
+            if (isToday) {
+              wasDeducted = effectivePaymentDate <= today;
+            } else {
+              wasDeducted = effectivePaymentDate <= endDateObj;
+            }
+            
+            const bankId = purchase.bank.id;
+            const balanceBefore = currentBalances[bankId] || initialBalances[bankId] || 0;
+            const balanceAfter = wasDeducted ? balanceBefore - purchaseAmount : balanceBefore;
+            
+            if (wasDeducted) {
+              currentBalances[bankId] = balanceAfter;
+            }
 
-          // Buscar o tipo de conta do banco
-          const bankInfo = purchase.bank ? banksRes.data.find((b: Bank) => b.id === purchase.bank!.id) : null;
+            const bankInfo = purchase.bank ? banksRes.data.find((b: Bank) => b.id === purchase.bank!.id) : null;
+            
+            timeline.push({
+              id: purchase.id,
+              type: 'purchase',
+              description: purchase.description,
+              amount: purchaseAmount,
+              timestamp: purchase.createdAt || purchase.date,
+              bankId: purchase.bank?.id,
+              bankName: purchase.bank?.name,
+              bankColor: purchase.bank?.color,
+              bankType: bankInfo?.type,
+              balanceBefore,
+              balanceAfter,
+              paymentMethod: purchase.paymentMethod,
+            });
+          } else {
+            // Compras sem banco ou de crédito: mostrar na timeline mas sem afetar saldo
+            const bankInfo = purchase.bank ? banksRes.data.find((b: Bank) => b.id === purchase.bank!.id) : null;
+            const bankId = purchase.bank?.id;
+            const balanceBefore = bankId ? (currentBalances[bankId] || initialBalances[bankId] || 0) : 0;
+            
+            timeline.push({
+              id: purchase.id,
+              type: 'purchase',
+              description: purchase.description,
+              amount: purchaseAmount,
+              timestamp: purchase.createdAt || purchase.date,
+              bankId: purchase.bank?.id,
+              bankName: purchase.bank?.name || 'Sem banco',
+              bankColor: purchase.bank?.color,
+              bankType: bankInfo?.type,
+              balanceBefore,
+              balanceAfter: balanceBefore, // Crédito não afeta saldo
+              paymentMethod: purchase.paymentMethod,
+            });
+          }
+        } else if (transaction.type === 'receipt') {
+          const receipt = transaction.data;
+          const receiptAmount = typeof receipt.amount === 'string' 
+            ? parseFloat(receipt.amount) 
+            : Number(receipt.amount);
           
-          timeline.push({
-            id: purchase.id,
-            type: 'purchase',
-            description: purchase.description,
-            amount: purchaseAmount,
-            timestamp: purchase.createdAt || purchase.date,
-            bankId: purchase.bank?.id,
-            bankName: purchase.bank?.name,
-            bankColor: purchase.bank?.color,
-            bankType: bankInfo?.type,
-            balanceBefore,
-            balanceAfter,
-            paymentMethod: purchase.paymentMethod,
-          });
-        } else {
-          // Compras sem banco ou de crédito: mostrar na timeline mas sem afetar saldo
-          const bankInfo = purchase.bank ? banksRes.data.find((b: Bank) => b.id === purchase.bank!.id) : null;
-          const bankId = purchase.bank?.id;
-          const balanceBefore = bankId ? (currentBalances[bankId] || initialBalances[bankId] || 0) : 0;
-          
-          timeline.push({
-            id: purchase.id,
-            type: 'purchase',
-            description: purchase.description,
-            amount: purchaseAmount,
-            timestamp: purchase.createdAt || purchase.date,
-            bankId: purchase.bank?.id,
-            bankName: purchase.bank?.name || 'Sem banco',
-            bankColor: purchase.bank?.color,
-            bankType: bankInfo?.type,
-            balanceBefore,
-            balanceAfter: balanceBefore, // Crédito não afeta saldo
-            paymentMethod: purchase.paymentMethod,
-          });
+          if (receipt.bankId) {
+            const bankId = receipt.bankId;
+            const receiptDateObj = new Date(receipt.date);
+            receiptDateObj.setHours(0, 0, 0, 0);
+            let wasAdded = false;
+            if (isToday) {
+              wasAdded = receiptDateObj <= today;
+            } else {
+              wasAdded = true;
+            }
+            
+            const balanceBefore = currentBalances[bankId] || initialBalances[bankId] || 0;
+            const balanceAfter = wasAdded ? balanceBefore + receiptAmount : balanceBefore;
+            
+            if (wasAdded) {
+              currentBalances[bankId] = balanceAfter;
+            }
+            
+            const bank = banksRes.data.find((b: Bank) => b.id === bankId);
+            
+            timeline.push({
+              id: receipt.id,
+              type: 'receipt',
+              description: receipt.description,
+              amount: receiptAmount,
+              timestamp: receipt.createdAt || receipt.date,
+              bankId: receipt.bankId,
+              bankName: bank?.name || 'Sem banco',
+              bankColor: bank?.color,
+              bankType: bank?.type,
+              balanceBefore,
+              balanceAfter,
+            });
+          } else {
+            // Receita sem banco
+            timeline.push({
+              id: receipt.id,
+              type: 'receipt',
+              description: receipt.description,
+              amount: receiptAmount,
+              timestamp: receipt.createdAt || receipt.date,
+              bankId: undefined,
+              bankName: 'Sem banco',
+              balanceBefore: 0,
+              balanceAfter: 0,
+            });
+          }
         }
       });
 
