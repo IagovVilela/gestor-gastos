@@ -44,7 +44,8 @@ Thumbs.db
 .DS_Store
 
 # Prisma
-backend/prisma/migrations/*.sql
+# Migrations devem ser commitadas
+# backend/prisma/migrations/*.sql
 !backend/prisma/migrations/migration_lock.toml
 
 # Temporary files
