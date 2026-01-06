@@ -4,8 +4,21 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import { execSync } from 'child_process';
 
 async function bootstrap() {
+  // Executar migrations antes de iniciar o servidor
+  if (process.env.NODE_ENV === 'production') {
+    try {
+      console.log('🔄 Executando migrations do Prisma...');
+      execSync('npx prisma migrate deploy', { stdio: 'inherit' });
+      console.log('✅ Migrations executadas com sucesso!');
+    } catch (error) {
+      console.error('❌ Erro ao executar migrations:', error);
+      // Não bloquear a inicialização se as migrations já foram executadas
+    }
+  }
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // Servir arquivos estáticos (uploads)
