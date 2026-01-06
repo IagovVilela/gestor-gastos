@@ -207,12 +207,13 @@ export function DailyBalanceTimeline() {
               wasDeducted = effectivePaymentDate <= selectedDateObj;
             }
             
-            if (wasDeducted) {
+            if (wasDeducted && purchase.bank?.id) {
               // Adicionar de volta ao saldo (reverter o desconto)
               const purchaseAmount = typeof purchase.amount === 'string' 
                 ? parseFloat(purchase.amount) 
                 : Number(purchase.amount);
-              initialBalances[purchase.bank.id] = (initialBalances[purchase.bank.id] || 0) + purchaseAmount;
+              const bankId = purchase.bank.id;
+              initialBalances[bankId] = (initialBalances[bankId] || 0) + purchaseAmount;
               todayPurchases.push(purchase);
             }
           }
@@ -260,16 +261,17 @@ export function DailyBalanceTimeline() {
           const selectedDateObj = new Date(selectedDate);
           selectedDateObj.setHours(0, 0, 0, 0);
           
-          if (purchaseDate.getTime() === selectedDateObj.getTime()) {
+          if (purchaseDate.getTime() === selectedDateObj.getTime() && purchase.bank?.id) {
             // Calcular saldo antes (saldo atual antes desta compra)
             const purchaseAmount = typeof purchase.amount === 'string' 
               ? parseFloat(purchase.amount) 
               : Number(purchase.amount);
-            const balanceBefore = currentBalances[purchase.bank.id] || initialBalances[purchase.bank.id] || 0;
+            const bankId = purchase.bank.id;
+            const balanceBefore = currentBalances[bankId] || initialBalances[bankId] || 0;
             const balanceAfter = balanceBefore - purchaseAmount;
             
             // Atualizar saldo atual para próxima compra
-            currentBalances[purchase.bank.id] = balanceAfter;
+            currentBalances[bankId] = balanceAfter;
 
             // Buscar o tipo de conta do banco
             const bankInfo = purchase.bank ? banksRes.data.find((b: Bank) => b.id === purchase.bank!.id) : null;
