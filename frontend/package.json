@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "node server.js",
-    "start:standalone": "node .next/standalone/server.js",
+    "start": "node .next/standalone/server.js",
     "start:dev": "next start",
     "lint": "next lint"
   },
