@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  output: 'standalone',
+  // output: 'standalone', // Desabilitado para usar server.js customizado
   eslint: {
     // Permite que o build continue mesmo com warnings do ESLint
     ignoreDuringBuilds: true,
