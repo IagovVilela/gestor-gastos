@@ -25,6 +25,7 @@ export default function PurchasesPage() {
             <p className="text-muted-foreground">
               Registre seus gastos diários de forma rápida e simples
             </p>
+            {/* v1.0.0 */}
           </div>
 
           <PurchaseForm key={`form-${refreshKey}`} onSuccess={handleSuccess} />
