@@ -109,7 +109,10 @@ export function DailyBalanceTimeline() {
   }, [selectedDate, periodFilter]);
 
   const getDateRange = () => {
-    const baseDate = new Date(selectedDate);
+    // Criar data a partir da string selecionada sem timezone
+    // selectedDate vem no formato 'yyyy-MM-dd'
+    const [year, month, day] = selectedDate.split('-').map(Number);
+    const baseDate = new Date(year, month - 1, day); // month é 0-indexed
     baseDate.setHours(0, 0, 0, 0);
     
     let startDate: Date;
@@ -142,6 +145,10 @@ export function DailyBalanceTimeline() {
         endDate = new Date(baseDate);
         endDate.setDate(endDate.getDate() + 1);
     }
+    
+    // Garantir que as horas estão zeradas
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(0, 0, 0, 0);
     
     return {
       startDate: format(startDate, 'yyyy-MM-dd'),
@@ -201,21 +208,18 @@ export function DailyBalanceTimeline() {
       const receiptsData = receiptsRes.data?.data || receiptsRes.data || [];
       receiptsData.forEach((receipt: any) => {
         if (receipt.bankId) {
-          const receiptDate = new Date(receipt.date);
-          receiptDate.setHours(0, 0, 0, 0);
+          // Extrair apenas a parte da data (sem hora) para evitar problemas de timezone
+          const receiptDateStr = receipt.date.split('T')[0];
           
           // Verificar se a receita está no período selecionado
-          // Comparar apenas as datas (sem horas) para evitar problemas de timezone
-          const receiptDateStr = format(receiptDate, 'yyyy-MM-dd');
-          const startDateStr = format(startDateObj, 'yyyy-MM-dd');
-          const endDateStr = format(endDateObj, 'yyyy-MM-dd');
-          
-          if (receiptDateStr >= startDateStr && receiptDateStr < endDateStr) {
+          if (receiptDateStr >= startDate && receiptDateStr < endDate) {
             // Se é hoje, verificar se a receita já foi adicionada ao saldo
             // Se é dia passado, assumir que foi adicionada
+            const receiptDateObj = new Date(receipt.date);
+            receiptDateObj.setHours(0, 0, 0, 0);
             let wasAdded = false;
             if (isToday) {
-              wasAdded = receiptDate <= today;
+              wasAdded = receiptDateObj <= today;
             } else {
               wasAdded = true;
             }
@@ -234,16 +238,11 @@ export function DailyBalanceTimeline() {
       const purchasesData = purchasesRes.data?.data || purchasesRes.data || [];
       purchasesData.forEach((purchase: Purchase) => {
         if (purchase.bank?.id && purchase.paymentMethod !== 'CREDIT') {
-          const purchaseDate = new Date(purchase.date);
-          purchaseDate.setHours(0, 0, 0, 0);
+          // Extrair apenas a parte da data (sem hora) para evitar problemas de timezone
+          const purchaseDateStr = purchase.date.split('T')[0];
           
           // Verificar se a compra está no período selecionado
-          // Comparar apenas as datas (sem horas) para evitar problemas de timezone
-          const purchaseDateStr = format(purchaseDate, 'yyyy-MM-dd');
-          const startDateStr = format(startDateObj, 'yyyy-MM-dd');
-          const endDateStr = format(endDateObj, 'yyyy-MM-dd');
-          
-          if (purchaseDateStr >= startDateStr && purchaseDateStr < endDateStr) {
+          if (purchaseDateStr >= startDate && purchaseDateStr < endDate) {
             // Verificar se já foi descontada do saldo
             // A despesa só é descontada se paymentDate <= hoje (ou <= data selecionada para dias passados)
             // Se não tem paymentDate, usa a data da compra
@@ -316,16 +315,11 @@ export function DailyBalanceTimeline() {
 
       sortedPurchases.forEach((purchase: Purchase) => {
         if (purchase.bank?.id && purchase.paymentMethod !== 'CREDIT') {
-          const purchaseDate = new Date(purchase.date);
-          purchaseDate.setHours(0, 0, 0, 0);
+          // Extrair apenas a parte da data (sem hora) para evitar problemas de timezone
+          const purchaseDateStr = purchase.date.split('T')[0];
           
           // Verificar se a compra está no período selecionado
-          // Comparar apenas as datas (sem horas) para evitar problemas de timezone
-          const purchaseDateStr = format(purchaseDate, 'yyyy-MM-dd');
-          const startDateStr = format(startDateObj, 'yyyy-MM-dd');
-          const endDateStr = format(endDateObj, 'yyyy-MM-dd');
-          
-          if (purchaseDateStr >= startDateStr && purchaseDateStr < endDateStr && purchase.bank?.id) {
+          if (purchaseDateStr >= startDate && purchaseDateStr < endDate && purchase.bank?.id) {
             // Verificar se já foi descontada (para calcular saldo corretamente)
             const effectivePaymentDate = purchase.paymentDate 
               ? new Date(purchase.paymentDate) 
