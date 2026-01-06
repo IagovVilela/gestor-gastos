@@ -663,7 +663,7 @@ export function DailyBalanceTimeline() {
             {todayTransactions.length > 0 && (
               <div className="space-y-3 pt-4 border-t">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase">
-                  Saldos Finais
+                  {periodFilter === 'day' ? 'Saldos Finais' : `Saldo Final do ${periodFilter === 'week' ? 'Período' : periodFilter === 'month' ? 'Mês' : 'Ano'}`}
                 </h3>
                 {banks.map((bank) => {
                   const bankTransactions = todayTransactions.filter(t => t.bankId === bank.id);
@@ -690,7 +690,9 @@ export function DailyBalanceTimeline() {
                         <div>
                           <p className="font-medium">{bank.name}</p>
                           <div className="flex items-center gap-2">
-                            <p className="text-xs text-muted-foreground">Saldo final do dia</p>
+                            <p className="text-xs text-muted-foreground">
+                              {periodFilter === 'day' ? 'Saldo final do dia' : `Saldo final do ${periodFilter === 'week' ? 'período' : periodFilter === 'month' ? 'mês' : 'ano'}`}
+                            </p>
                             {bank.type && (
                               <>
                                 <span className="text-xs text-muted-foreground">•</span>
