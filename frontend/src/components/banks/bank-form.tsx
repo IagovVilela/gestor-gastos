@@ -472,7 +472,7 @@ export function BankForm({ open, onOpenChange, onSuccess, bankId }: BankFormProp
                         disabled={loading}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Se não informado, será usado: "{watch('name')} - Poupança"
+                        Se não informado, será usado: &quot;{watch('name')} - Poupança&quot;
                       </p>
                     </div>
 

@@ -2,6 +2,14 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
+  eslint: {
+    // Permite que o build continue mesmo com warnings do ESLint
+    ignoreDuringBuilds: false,
+  },
+  typescript: {
+    // Permite que o build continue mesmo com erros de tipo (não recomendado, mas pode ajudar)
+    ignoreBuildErrors: false,
+  },
   images: {
     domains: ['localhost'],
     remotePatterns: [
