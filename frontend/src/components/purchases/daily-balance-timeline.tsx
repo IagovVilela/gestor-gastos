@@ -305,7 +305,8 @@ export function DailyBalanceTimeline() {
             });
       });
 
-      // Adicionar compras do dia em ordem cronológica
+      // Adicionar compras do período em ordem cronológica
+      // As compras já foram filtradas no loop anterior, então não precisa verificar novamente
       const sortedPurchases = todayPurchases.sort((a: Purchase, b: Purchase) => 
         new Date(a.createdAt || a.date).getTime() - new Date(b.createdAt || b.date).getTime()
       );
@@ -315,11 +316,7 @@ export function DailyBalanceTimeline() {
 
       sortedPurchases.forEach((purchase: Purchase) => {
         if (purchase.bank?.id && purchase.paymentMethod !== 'CREDIT') {
-          // Extrair apenas a parte da data (sem hora) para evitar problemas de timezone
-          const purchaseDateStr = purchase.date.split('T')[0];
-          
-          // Verificar se a compra está no período selecionado
-          if (purchaseDateStr >= startDate && purchaseDateStr < endDate && purchase.bank?.id) {
+          // As compras já foram filtradas no loop anterior, então processar todas
             // Verificar se já foi descontada (para calcular saldo corretamente)
             const effectivePaymentDate = purchase.paymentDate 
               ? new Date(purchase.paymentDate) 
