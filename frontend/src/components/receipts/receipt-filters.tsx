@@ -16,7 +16,7 @@ import { Search, X, Calendar } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { debounce } from '@/lib/debounce';
 
-interface ReceiptFiltersProps {
+export interface ReceiptFiltersProps {
   onFilterChange: (filters: ReceiptFilters) => void;
   categories: Array<{ id: string; name: string }>;
 }
