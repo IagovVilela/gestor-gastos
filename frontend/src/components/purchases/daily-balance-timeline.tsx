@@ -115,19 +115,24 @@ export function DailyBalanceTimeline() {
       selectedDateObj.setHours(0, 0, 0, 0);
       const isToday = selectedDateObj.getTime() === today.getTime();
 
+      // Adicionar um dia ao endDate para incluir o dia inteiro (até 23:59:59)
+      const endDatePlusOne = new Date(selectedDate);
+      endDatePlusOne.setDate(endDatePlusOne.getDate() + 1);
+      const endDateFormatted = format(endDatePlusOne, 'yyyy-MM-dd');
+
       const [banksRes, purchasesRes, receiptsRes] = await Promise.all([
         api.get('/banks'),
         api.get('/expenses', {
           params: {
             startDate: selectedDate,
-            endDate: selectedDate,
+            endDate: endDateFormatted,
             limit: 100,
           },
         }),
         api.get('/receipts', {
           params: {
             startDate: selectedDate,
-            endDate: selectedDate,
+            endDate: endDateFormatted,
             limit: 100,
           },
         }),
