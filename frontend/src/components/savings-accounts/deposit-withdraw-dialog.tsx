@@ -444,7 +444,7 @@ export function DepositWithdrawDialog({
                   <div className="border-t pt-2"></div>
 
                   {/* Saldo Projetado */}
-                  {projectedBalanceAfter !== null && (
+                  {projectedBalanceAfter !== null && projectedBalance && (
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
                         <span className="text-sm font-medium">Saldo Projetado (Fase 4)</span>
