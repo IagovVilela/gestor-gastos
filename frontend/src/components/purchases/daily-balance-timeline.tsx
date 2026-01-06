@@ -6,7 +6,7 @@ import api from '@/lib/api';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatCurrency } from '@/lib/formatters';
-import { Building2, ArrowDown, Minus, Pencil, Trash2 } from 'lucide-react';
+import { Building2, ArrowDown, ArrowUp, Minus, Pencil, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -654,10 +654,17 @@ export function DailyBalanceTimeline() {
                               className="w-10 h-10 rounded-full flex items-center justify-center border-2 bg-background"
                               style={{ borderColor: transaction.bankColor || '#8B5CF6' }}
                             >
-                              <Minus
-                                className="h-5 w-5"
-                                style={{ color: transaction.bankColor || '#8B5CF6' }}
-                              />
+                              {transaction.type === 'receipt' ? (
+                                <ArrowUp
+                                  className="h-5 w-5"
+                                  style={{ color: transaction.bankColor || '#8B5CF6' }}
+                                />
+                              ) : (
+                                <ArrowDown
+                                  className="h-5 w-5"
+                                  style={{ color: transaction.bankColor || '#8B5CF6' }}
+                                />
+                              )}
                             </div>
                           </div>
 
@@ -695,10 +702,14 @@ export function DailyBalanceTimeline() {
                                     <span className="text-muted-foreground">Antes: </span>
                                     <span className="font-medium">{formatCurrency(transaction.balanceBefore)}</span>
                                   </div>
-                                  <ArrowDown className="h-4 w-4 text-destructive" />
+                                  {transaction.type === 'receipt' ? (
+                                    <ArrowUp className="h-4 w-4 text-primary" />
+                                  ) : (
+                                    <ArrowDown className="h-4 w-4 text-destructive" />
+                                  )}
                                   <div>
                                     <span className="text-muted-foreground">Depois: </span>
-                                    <span className="font-semibold text-destructive">
+                                    <span className={`font-semibold ${transaction.type === 'receipt' ? 'text-primary' : 'text-destructive'}`}>
                                       {formatCurrency(transaction.balanceAfter)}
                                     </span>
                                   </div>
