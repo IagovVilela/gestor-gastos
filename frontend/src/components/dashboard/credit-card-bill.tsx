@@ -894,9 +894,9 @@ export function CreditCardBill() {
                                     </p>
                                     <div className="space-y-1 text-xs text-blue-600 dark:text-blue-400">
                                       <p>
-                                        <span className="font-medium">Valor guardado:</span> {formatCurrency(Number(account.savingsAccount.currentAmount))}
+                                        <span className="font-medium">Valor guardado:</span> {formatCurrency(Number(account.savingsAccount?.currentAmount || 0))}
                                       </p>
-                                      {account.savingsAccount.targetAmount && (
+                                      {account.savingsAccount?.targetAmount && (
                                         <p>
                                           <span className="font-medium">Meta:</span> {formatCurrency(Number(account.savingsAccount.targetAmount))}
                                         </p>
@@ -1175,12 +1175,12 @@ export function CreditCardBill() {
                                   </p>
                                   <div className="space-y-1 text-xs text-blue-600 dark:text-blue-400">
                                     <p>
-                                      <span className="font-medium">Poupança:</span> {bank.savingsAccount.name}
+                                      <span className="font-medium">Poupança:</span> {bank.savingsAccount?.name}
                                     </p>
                                     <p>
-                                      <span className="font-medium">Valor guardado:</span> {formatCurrency(Number(bank.savingsAccount.currentAmount))}
+                                      <span className="font-medium">Valor guardado:</span> {formatCurrency(Number(bank.savingsAccount?.currentAmount || 0))}
                                     </p>
-                                    {bank.savingsAccount.targetAmount && (
+                                    {bank.savingsAccount?.targetAmount && (
                                       <p>
                                         <span className="font-medium">Meta:</span> {formatCurrency(Number(bank.savingsAccount.targetAmount))}
                                       </p>
@@ -1341,9 +1341,9 @@ export function CreditCardBill() {
                                     </p>
                                     <div className="space-y-1 text-xs text-blue-600 dark:text-blue-400">
                                       <p>
-                                        <span className="font-medium">Valor guardado:</span> {formatCurrency(Number(account.savingsAccount.currentAmount))}
+                                        <span className="font-medium">Valor guardado:</span> {formatCurrency(Number(account.savingsAccount?.currentAmount || 0))}
                                       </p>
-                                      {account.savingsAccount.targetAmount && (
+                                      {account.savingsAccount?.targetAmount && (
                                         <p>
                                           <span className="font-medium">Meta:</span> {formatCurrency(Number(account.savingsAccount.targetAmount))}
                                         </p>
