@@ -11,11 +11,20 @@ async function bootstrap() {
   if (process.env.NODE_ENV === 'production') {
     try {
       console.log('🔄 Executando migrations do Prisma...');
-      execSync('npx prisma migrate deploy', { stdio: 'inherit' });
+      execSync('npx prisma migrate deploy', { 
+        stdio: 'inherit',
+        timeout: 60000, // 60 segundos de timeout
+        env: { ...process.env }
+      });
       console.log('✅ Migrations executadas com sucesso!');
-    } catch (error) {
-      console.error('❌ Erro ao executar migrations:', error);
-      // Não bloquear a inicialização se as migrations já foram executadas
+    } catch (error: any) {
+      // Se for erro de "no pending migrations", não é problema
+      if (error.message && error.message.includes('No pending migrations')) {
+        console.log('ℹ️ Nenhuma migration pendente');
+      } else {
+        console.error('❌ Erro ao executar migrations:', error.message || error);
+        // Continuar mesmo com erro (pode ser que já foram executadas)
+      }
     }
   }
 
