@@ -1,5 +1,9 @@
 # 🚂 Deploy Rápido no Railway
 
+## ⚠️ IMPORTANTE: Configure o Root Directory!
+
+O Railway precisa saber qual é a pasta de cada serviço. **Configure o Root Directory** nas Settings de cada serviço.
+
 ## Passos Rápidos
 
 ### 1. Criar Projeto no Railway
@@ -14,19 +18,19 @@
 ### 3. Deploy do Backend
 1. Clique em **"+ New"** → **"GitHub Repo"** (ou seu repositório)
 2. Selecione o repositório
-3. Configure:
-   - **Root Directory:** `backend`
+3. **IMPORTANTE:** Vá em **Settings** → **Root Directory** → Digite: `backend`
+4. Configure (ou deixe o Railway detectar automaticamente via `railway.json`):
    - **Build Command:** `npm install && npm run build && npm run postbuild`
    - **Start Command:** `npm run start:prod`
-4. Adicione as variáveis de ambiente (veja `backend/railway.env.example`)
+5. Adicione as variáveis de ambiente (veja `backend/railway.env.example`)
 
 ### 4. Deploy do Frontend
 1. Clique em **"+ New"** → **"GitHub Repo"** (mesmo repositório)
-2. Configure:
-   - **Root Directory:** `frontend`
+2. **IMPORTANTE:** Vá em **Settings** → **Root Directory** → Digite: `frontend`
+3. Configure (ou deixe o Railway detectar automaticamente via `railway.json`):
    - **Build Command:** `npm install && npm run build`
    - **Start Command:** `npm run start`
-3. Adicione a variável `NEXT_PUBLIC_API_URL` com a URL do backend
+4. Adicione a variável `NEXT_PUBLIC_API_URL` com a URL do backend
 
 ### 5. Executar Migrations
 Após o primeiro deploy do backend, execute:
