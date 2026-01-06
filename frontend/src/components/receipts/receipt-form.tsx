@@ -25,6 +25,7 @@ import {
 import api from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { dateToISOString } from '@/lib/formatters';
 
 const receiptSchema = z.object({
   description: z.string().min(1, 'Descrição é obrigatória'),
@@ -159,7 +160,7 @@ export function ReceiptForm({
       const payload = {
         ...data,
         amount: Number(data.amount),
-        date: new Date(data.date).toISOString(),
+        date: dateToISOString(data.date),
         categoryId: data.categoryId || undefined,
         recurringType: data.isRecurring ? data.recurringType : undefined,
       };

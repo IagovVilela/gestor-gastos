@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import api from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { dateToISOString } from '@/lib/formatters';
 import { ShoppingCart } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -128,7 +129,7 @@ export function PurchaseForm({ onSuccess, purchaseId, onCancel, showCard = true 
       const payload: any = {
         description: data.description,
         amount: Number(data.amount),
-        date: new Date(data.date).toISOString(),
+        date: dateToISOString(data.date),
         paymentMethod: data.paymentMethod || undefined,
         bankId: data.bankId || undefined,
         notes: data.notes || undefined,

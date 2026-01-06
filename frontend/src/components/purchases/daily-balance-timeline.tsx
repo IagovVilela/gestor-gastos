@@ -166,26 +166,78 @@ export function DailyBalanceTimeline() {
       const { startDate, endDate, startDateObj, endDateObj } = getDateRange();
       const isToday = periodFilter === 'day' && selectedDate === format(today, 'yyyy-MM-dd');
 
-      const [banksRes, purchasesRes, receiptsRes] = await Promise.all([
-        api.get('/banks'),
-        api.get('/expenses', {
+      // Para o backend, precisamos passar a data do último dia do período (não o dia seguinte)
+      // O backend usa lte (less than or equal), então precisa da data real do último dia
+      const backendEndDate = format(new Date(endDateObj.getTime() - 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
+      
+      // Buscar bancos
+      const banksRes = await api.get('/banks');
+      
+      // Buscar despesas com paginação (máximo 100 por página)
+      let allPurchases: any[] = [];
+      let purchasesPage = 1;
+      let hasMorePurchases = true;
+      
+      while (hasMorePurchases) {
+        const purchasesRes = await api.get('/expenses', {
           params: {
             startDate,
-            endDate,
-            limit: 500,
+            endDate: backendEndDate,
+            limit: 100,
+            page: purchasesPage,
           },
-        }),
-        api.get('/receipts', {
+        });
+        
+        const purchasesData = purchasesRes.data?.data || purchasesRes.data || [];
+        allPurchases = [...allPurchases, ...purchasesData];
+        
+        // Verificar se há mais páginas
+        if (Array.isArray(purchasesRes.data)) {
+          hasMorePurchases = false;
+        } else {
+          const pagination = purchasesRes.data?.pagination;
+          hasMorePurchases = pagination && purchasesPage < pagination.totalPages;
+        }
+        purchasesPage++;
+        
+        // Limitar a 10 páginas (1000 itens) para evitar loops infinitos
+        if (purchasesPage > 10) break;
+      }
+      
+      // Buscar receitas com paginação (máximo 100 por página)
+      let allReceipts: any[] = [];
+      let receiptsPage = 1;
+      let hasMoreReceipts = true;
+      
+      while (hasMoreReceipts) {
+        const receiptsRes = await api.get('/receipts', {
           params: {
             startDate,
-            endDate,
-            limit: 500,
+            endDate: backendEndDate,
+            limit: 100,
+            page: receiptsPage,
           },
-        }),
-      ]);
-
-      setBanks(banksRes.data || []);
-      setPurchases((purchasesRes.data?.data || purchasesRes.data || []).sort((a: Purchase, b: Purchase) => 
+        });
+        
+        const receiptsData = receiptsRes.data?.data || receiptsRes.data || [];
+        allReceipts = [...allReceipts, ...receiptsData];
+        
+        // Verificar se há mais páginas
+        if (Array.isArray(receiptsRes.data)) {
+          hasMoreReceipts = false;
+        } else {
+          const pagination = receiptsRes.data?.pagination;
+          hasMoreReceipts = pagination && receiptsPage < pagination.totalPages;
+        }
+        receiptsPage++;
+        
+        // Limitar a 10 páginas (1000 itens) para evitar loops infinitos
+        if (receiptsPage > 10) break;
+      }
+      
+      const banksData = banksRes.data || [];
+      setBanks(banksData);
+      setPurchases(allPurchases.sort((a: Purchase, b: Purchase) => 
         new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime()
       ));
 
@@ -205,7 +257,7 @@ export function DailyBalanceTimeline() {
       });
 
       // Reverter receitas do período (subtrair do saldo atual para obter saldo inicial)
-      const receiptsData = receiptsRes.data?.data || receiptsRes.data || [];
+      const receiptsData = allReceipts;
       const todayReceipts: any[] = [];
       
       receiptsData.forEach((receipt: any) => {
@@ -243,8 +295,7 @@ export function DailyBalanceTimeline() {
       });
 
       // Reverter despesas do período (adicionar de volta ao saldo para obter saldo inicial)
-      const purchasesData = purchasesRes.data?.data || purchasesRes.data || [];
-      purchasesData.forEach((purchase: Purchase) => {
+      allPurchases.forEach((purchase: Purchase) => {
         // Extrair apenas a parte da data (sem hora) para evitar problemas de timezone
         // A data pode vir como '2026-01-05' ou '2026-01-05T10:08:00.000Z'
         const purchaseDateStr = purchase.date.includes('T') 
@@ -252,7 +303,8 @@ export function DailyBalanceTimeline() {
           : purchase.date.substring(0, 10);
         
         // Verificar se a compra está no período selecionado PRIMEIRO
-        if (purchaseDateStr >= startDate && purchaseDateStr < endDate) {
+        const isInPeriod = purchaseDateStr >= startDate && purchaseDateStr < endDate;
+        if (isInPeriod) {
           // Adicionar TODAS as compras do período à lista (incluindo crédito)
           // Crédito não afeta saldo, mas deve aparecer na timeline
           todayPurchases.push(purchase);
@@ -553,30 +605,52 @@ export function DailyBalanceTimeline() {
           </div>
         </div>
         <p className="text-sm text-muted-foreground">
-          {periodFilter === 'day' && format(new Date(selectedDate), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+          {periodFilter === 'day' && (() => {
+            // Criar data no timezone local para preservar o dia
+            const [year, month, day] = selectedDate.split('-').map(Number);
+            const localDate = new Date(year, month - 1, day);
+            return format(localDate, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+          })()}
           {periodFilter === 'week' && (() => {
-            const baseDate = new Date(selectedDate);
+            // Criar data no timezone local para preservar o dia
+            const [year, month, day] = selectedDate.split('-').map(Number);
+            const baseDate = new Date(year, month - 1, day);
             const weekStart = startOfWeek(baseDate, { locale: ptBR, weekStartsOn: 1 });
             const weekEnd = endOfWeek(baseDate, { locale: ptBR, weekStartsOn: 1 });
             return `${format(weekStart, "dd 'de' MMMM", { locale: ptBR })} - ${format(weekEnd, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}`;
           })()}
-          {periodFilter === 'month' && format(new Date(selectedDate), "MMMM 'de' yyyy", { locale: ptBR })}
-          {periodFilter === 'year' && format(new Date(selectedDate), "yyyy", { locale: ptBR })}
+          {periodFilter === 'month' && (() => {
+            // Criar data no timezone local para preservar o dia
+            const [year, month, day] = selectedDate.split('-').map(Number);
+            const localDate = new Date(year, month - 1, day);
+            return format(localDate, "MMMM 'de' yyyy", { locale: ptBR });
+          })()}
+          {periodFilter === 'year' && (() => {
+            // Criar data no timezone local para preservar o dia
+            const [year, month, day] = selectedDate.split('-').map(Number);
+            const localDate = new Date(year, month - 1, day);
+            return format(localDate, "yyyy", { locale: ptBR });
+          })()}
         </p>
       </CardHeader>
       <CardContent>
         {banks.length === 0 && transactions.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-muted-foreground">Nenhuma conta encontrada</p>
+            <p className="text-muted-foreground">
+              {banks.length === 0 
+                ? 'Nenhuma conta bancária cadastrada. Cadastre uma conta para ver o extrato.' 
+                : 'Nenhuma movimentação encontrada para o período selecionado.'}
+            </p>
           </div>
         ) : (
           <div className="space-y-6">
             {/* Saldos Iniciais */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase">
-                {periodFilter === 'day' ? 'Saldos Iniciais' : `Saldo Inicial do ${periodFilter === 'week' ? 'Período' : periodFilter === 'month' ? 'Mês' : 'Ano'}`}
-              </h3>
-              {initialBalances.map((initial) => {
+            {initialBalancesDisplay.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase">
+                  {periodFilter === 'day' ? 'Saldos Iniciais' : `Saldo Inicial do ${periodFilter === 'week' ? 'Período' : periodFilter === 'month' ? 'Mês' : 'Ano'}`}
+                </h3>
+                {initialBalancesDisplay.map((initial) => {
                 const bank = banks.find(b => b.id === initial.bankId);
                 const currentBalance = bank 
                   ? (typeof bank.balance === 'string' ? parseFloat(bank.balance) : Number(bank.balance))

@@ -7,6 +7,7 @@ import { AlertGeneratorService } from '../alerts/alert-generator.service';
 import { BanksService } from '../banks/banks.service';
 import { CreditCardBillsService } from '../credit-card-bills/credit-card-bills.service';
 import { Prisma, PaymentMethod } from '@prisma/client';
+import { parseDatePreservingDay, parseDateAtMidnight } from '../utils/date.utils';
 
 @Injectable()
 export class ExpensesService {
@@ -53,13 +54,13 @@ export class ExpensesService {
 
     // Se paymentDate não foi informado, usa a data do lançamento
     const paymentDate = createExpenseDto.paymentDate 
-      ? new Date(createExpenseDto.paymentDate)
-      : new Date(createExpenseDto.date);
+      ? parseDateAtMidnight(createExpenseDto.paymentDate)
+      : parseDateAtMidnight(createExpenseDto.date);
 
     const expense = await this.prisma.expense.create({
       data: {
         ...createExpenseDto,
-        date: new Date(createExpenseDto.date),
+        date: parseDateAtMidnight(createExpenseDto.date),
         paymentDate: paymentDate,
         userId,
         amount: new Prisma.Decimal(createExpenseDto.amount),
@@ -114,10 +115,13 @@ export class ExpensesService {
       if (query.startDate || query.endDate) {
         where.date = {};
         if (query.startDate) {
-          where.date.gte = new Date(query.startDate);
+          where.date.gte = parseDateAtMidnight(query.startDate);
         }
         if (query.endDate) {
-          where.date.lte = new Date(query.endDate);
+          // Para endDate, adicionar 1 dia e usar < (menor que) para incluir o dia inteiro
+          const endDate = parseDateAtMidnight(query.endDate);
+          endDate.setDate(endDate.getDate() + 1);
+          where.date.lt = endDate;
         }
       }
 
@@ -286,10 +290,10 @@ export class ExpensesService {
       updateData.bankId = updateExpenseDto.bankId || null;
     }
     if (updateExpenseDto.date) {
-      updateData.date = new Date(updateExpenseDto.date);
+      updateData.date = parseDateAtMidnight(updateExpenseDto.date);
     }
     if (updateExpenseDto.paymentDate !== undefined) {
-      updateData.paymentDate = updateExpenseDto.paymentDate ? new Date(updateExpenseDto.paymentDate) : null;
+      updateData.paymentDate = updateExpenseDto.paymentDate ? parseDateAtMidnight(updateExpenseDto.paymentDate) : null;
     }
     if (updateExpenseDto.amount !== undefined) {
       updateData.amount = new Prisma.Decimal(updateExpenseDto.amount);

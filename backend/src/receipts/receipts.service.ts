@@ -6,6 +6,7 @@ import { QueryReceiptDto } from './dto/query-receipt.dto';
 import { BanksService } from '../banks/banks.service';
 import { Prisma } from '@prisma/client';
 import { PaymentScheduleItemDto } from './dto/payment-schedule.dto';
+import { parseDatePreservingDay, parseDateAtMidnight } from '../utils/date.utils';
 
 @Injectable()
 export class ReceiptsService {
@@ -142,7 +143,7 @@ export class ReceiptsService {
       }
     }
 
-    const receiptDate = new Date(createReceiptDto.date);
+    const receiptDate = parseDateAtMidnight(createReceiptDto.date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -187,10 +188,13 @@ export class ReceiptsService {
     if (query.startDate || query.endDate) {
       where.date = {};
       if (query.startDate) {
-        where.date.gte = new Date(query.startDate);
+        where.date.gte = parseDateAtMidnight(query.startDate);
       }
       if (query.endDate) {
-        where.date.lte = new Date(query.endDate);
+        // Para endDate, adicionar 1 dia e usar < (menor que) para incluir o dia inteiro
+        const endDate = parseDateAtMidnight(query.endDate);
+        endDate.setDate(endDate.getDate() + 1);
+        where.date.lt = endDate;
       }
     }
 
@@ -304,7 +308,7 @@ export class ReceiptsService {
 
     const updateData: any = { ...updateReceiptDto };
     if (updateReceiptDto.date) {
-      updateData.date = new Date(updateReceiptDto.date);
+      updateData.date = parseDateAtMidnight(updateReceiptDto.date);
     }
     if (updateReceiptDto.amount !== undefined) {
       updateData.amount = new Prisma.Decimal(updateReceiptDto.amount);
@@ -317,8 +321,8 @@ export class ReceiptsService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const oldReceiptDate = new Date(oldReceipt.date);
-    const newReceiptDate = updateReceiptDto.date ? new Date(updateReceiptDto.date) : oldReceiptDate;
+    const oldReceiptDate = parseDateAtMidnight(oldReceipt.date.toISOString());
+    const newReceiptDate = updateReceiptDto.date ? parseDateAtMidnight(updateReceiptDto.date) : oldReceiptDate;
 
     const oldAmount = Number(oldReceipt.amount);
     const newAmount = updateReceiptDto.amount !== undefined ? updateReceiptDto.amount : oldAmount;

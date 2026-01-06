@@ -25,6 +25,7 @@ import {
 import api from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { dateToISOString } from '@/lib/formatters';
 import { ReceiptUpload } from './receipt-upload';
 
 const expenseSchema = z.object({
@@ -183,14 +184,14 @@ export function ExpenseForm({
       const payload: any = {
         ...data,
         amount: Number(data.amount),
-        date: new Date(data.date).toISOString(),
+        date: dateToISOString(data.date),
         categoryId: data.categoryId || undefined,
         recurringType: data.isRecurring ? data.recurringType : undefined,
       };
 
       // Se paymentDate não foi informado, não enviar (usa a data do lançamento)
       if (data.paymentDate) {
-        payload.paymentDate = new Date(data.paymentDate).toISOString();
+        payload.paymentDate = dateToISOString(data.paymentDate);
       } else {
         payload.paymentDate = undefined;
       }

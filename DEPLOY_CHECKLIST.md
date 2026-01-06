@@ -82,3 +82,4 @@ Use este checklist para garantir que tudo está configurado corretamente antes d
 - [ ] Configurar CI/CD para deploy automático
 
 
+

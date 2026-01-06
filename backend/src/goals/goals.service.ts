@@ -4,6 +4,7 @@ import { CreateGoalDto } from './dto/create-goal.dto';
 import { UpdateGoalDto } from './dto/update-goal.dto';
 import { DashboardService } from '../dashboard/dashboard.service';
 import { SavingsAccountsService } from '../savings-accounts/savings-accounts.service';
+import { parseDateAtMidnight } from '../utils/date.utils';
 
 @Injectable()
 export class GoalsService {
@@ -213,7 +214,7 @@ export class GoalsService {
 
     const updateData: any = { ...updateGoalDto };
     if (updateGoalDto.deadline) {
-      updateData.deadline = new Date(updateGoalDto.deadline);
+      updateData.deadline = parseDateAtMidnight(updateGoalDto.deadline);
     }
 
     // Calcular progresso

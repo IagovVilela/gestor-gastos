@@ -25,6 +25,7 @@ import {
 import api from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { dateToISOString } from '@/lib/formatters';
 import { GoalImageUpload } from './goal-image-upload';
 
 const goalSchema = z.object({
@@ -141,7 +142,7 @@ export function GoalForm({
       const payload = {
         ...data,
         targetAmount: Number(data.targetAmount),
-        deadline: data.deadline ? new Date(data.deadline).toISOString() : undefined,
+        deadline: data.deadline ? dateToISOString(data.deadline) : undefined,
         categoryId: data.categoryId || undefined,
       };
 
