@@ -319,6 +319,9 @@ export function DailyBalanceTimeline() {
 
       // Adicionar compras do período em ordem cronológica
       // As compras já foram filtradas no loop anterior, então não precisa verificar novamente
+      console.log('Compras no período (todayPurchases):', todayPurchases.length);
+      console.log('Compras:', todayPurchases.map(p => ({ desc: p.description, date: p.date, bank: p.bank?.name })));
+      
       const sortedPurchases = todayPurchases.sort((a: Purchase, b: Purchase) => 
         new Date(a.createdAt || a.date).getTime() - new Date(b.createdAt || b.date).getTime()
       );
@@ -327,6 +330,7 @@ export function DailyBalanceTimeline() {
       const currentBalances: Record<string, number> = { ...initialBalances };
 
       sortedPurchases.forEach((purchase: Purchase) => {
+        console.log('Processando compra para timeline:', purchase.description, 'bank:', purchase.bank?.id, 'paymentMethod:', purchase.paymentMethod);
         if (purchase.bank?.id && purchase.paymentMethod !== 'CREDIT') {
           // As compras já foram filtradas no loop anterior, então processar todas
           // Verificar se já foi descontada (para calcular saldo corretamente)
@@ -389,7 +393,8 @@ export function DailyBalanceTimeline() {
       );
 
       console.log('Timeline final:', timeline.length, 'transações');
-      console.log('Compras na timeline:', timeline.filter(t => t.type === 'purchase').length);
+      console.log('Compras na timeline:', timeline.filter(t => t.type === 'purchase').map(t => t.description));
+      console.log('Saldos iniciais na timeline:', timeline.filter(t => t.type === 'initial').length);
       
       setTransactions(timeline);
     } catch (error) {
