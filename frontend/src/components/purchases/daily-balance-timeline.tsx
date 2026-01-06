@@ -317,58 +317,57 @@ export function DailyBalanceTimeline() {
       sortedPurchases.forEach((purchase: Purchase) => {
         if (purchase.bank?.id && purchase.paymentMethod !== 'CREDIT') {
           // As compras já foram filtradas no loop anterior, então processar todas
-            // Verificar se já foi descontada (para calcular saldo corretamente)
-            const effectivePaymentDate = purchase.paymentDate 
-              ? new Date(purchase.paymentDate) 
-              : new Date(purchase.date);
-            effectivePaymentDate.setHours(0, 0, 0, 0);
-            
-            let wasDeducted = false;
-            if (isToday) {
-              wasDeducted = effectivePaymentDate <= today;
-            } else {
-              wasDeducted = effectivePaymentDate <= endDateObj;
-            }
-            
-            const purchaseAmount = typeof purchase.amount === 'string' 
-              ? parseFloat(purchase.amount) 
-              : Number(purchase.amount);
-            const bankId = purchase.bank.id;
-            
-            // Se foi descontada, calcular saldo antes e depois
-            // Se não foi descontada ainda, mostrar saldo atual (não muda)
-            let balanceBefore: number;
-            let balanceAfter: number;
-            
-            if (wasDeducted) {
-              balanceBefore = currentBalances[bankId] || initialBalances[bankId] || 0;
-              balanceAfter = balanceBefore - purchaseAmount;
-              // Atualizar saldo atual para próxima compra
-              currentBalances[bankId] = balanceAfter;
-            } else {
-              // Se não foi descontada ainda, o saldo não muda
-              balanceBefore = currentBalances[bankId] || initialBalances[bankId] || 0;
-              balanceAfter = balanceBefore;
-            }
-
-            // Buscar o tipo de conta do banco
-            const bankInfo = purchase.bank ? banksRes.data.find((b: Bank) => b.id === purchase.bank!.id) : null;
-            
-            timeline.push({
-              id: purchase.id,
-              type: 'purchase',
-              description: purchase.description,
-              amount: purchaseAmount,
-              timestamp: purchase.createdAt || purchase.date,
-              bankId: purchase.bank?.id,
-              bankName: purchase.bank?.name,
-              bankColor: purchase.bank?.color,
-              bankType: bankInfo?.type,
-              balanceBefore,
-              balanceAfter,
-              paymentMethod: purchase.paymentMethod,
-            });
+          // Verificar se já foi descontada (para calcular saldo corretamente)
+          const effectivePaymentDate = purchase.paymentDate 
+            ? new Date(purchase.paymentDate) 
+            : new Date(purchase.date);
+          effectivePaymentDate.setHours(0, 0, 0, 0);
+          
+          let wasDeducted = false;
+          if (isToday) {
+            wasDeducted = effectivePaymentDate <= today;
+          } else {
+            wasDeducted = effectivePaymentDate <= endDateObj;
           }
+          
+          const purchaseAmount = typeof purchase.amount === 'string' 
+            ? parseFloat(purchase.amount) 
+            : Number(purchase.amount);
+          const bankId = purchase.bank.id;
+          
+          // Se foi descontada, calcular saldo antes e depois
+          // Se não foi descontada ainda, mostrar saldo atual (não muda)
+          let balanceBefore: number;
+          let balanceAfter: number;
+          
+          if (wasDeducted) {
+            balanceBefore = currentBalances[bankId] || initialBalances[bankId] || 0;
+            balanceAfter = balanceBefore - purchaseAmount;
+            // Atualizar saldo atual para próxima compra
+            currentBalances[bankId] = balanceAfter;
+          } else {
+            // Se não foi descontada ainda, o saldo não muda
+            balanceBefore = currentBalances[bankId] || initialBalances[bankId] || 0;
+            balanceAfter = balanceBefore;
+          }
+
+          // Buscar o tipo de conta do banco
+          const bankInfo = purchase.bank ? banksRes.data.find((b: Bank) => b.id === purchase.bank!.id) : null;
+          
+          timeline.push({
+            id: purchase.id,
+            type: 'purchase',
+            description: purchase.description,
+            amount: purchaseAmount,
+            timestamp: purchase.createdAt || purchase.date,
+            bankId: purchase.bank?.id,
+            bankName: purchase.bank?.name,
+            bankColor: purchase.bank?.color,
+            bankType: bankInfo?.type,
+            balanceBefore,
+            balanceAfter,
+            paymentMethod: purchase.paymentMethod,
+          });
         }
       });
 
