@@ -551,7 +551,7 @@ export function CreditCardBillList() {
                               </p>
 
                               {/* Diagnóstico para poupanças */}
-                              {isSavingsAccount && hasSavings && (
+                              {isSavingsAccount && hasSavings && bank.savingsAccount && (
                                 <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-950/20 rounded border border-blue-200 dark:border-blue-800">
                                   <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1">
                                     📊 Diagnóstico da Poupança
