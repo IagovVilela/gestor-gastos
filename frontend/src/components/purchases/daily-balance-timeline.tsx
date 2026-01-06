@@ -189,8 +189,8 @@ export function DailyBalanceTimeline() {
         new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime()
       ));
 
-      // Calcular saldo inicial do dia (antes de qualquer transação)
-      // Saldo inicial = Saldo atual - receitas do dia + despesas do dia que foram descontadas
+      // Calcular saldo inicial do período (antes de qualquer transação)
+      // Saldo inicial = Saldo atual - receitas do período + despesas do período que foram descontadas
       const initialBalances: Record<string, number> = {};
       const todayPurchases: Purchase[] = [];
       
@@ -448,8 +448,8 @@ export function DailyBalanceTimeline() {
     );
   }
 
-  const todayTransactions = transactions.filter(t => t.type === 'purchase');
-  const initialBalances = transactions.filter(t => t.type === 'initial');
+  const todayTransactions = transactions.filter(t => t.type === 'purchase' || t.type === 'receipt');
+  const initialBalancesDisplay = transactions.filter(t => t.type === 'initial');
 
   return (
     <Card>
@@ -479,8 +479,8 @@ export function DailyBalanceTimeline() {
           {periodFilter === 'day' && format(new Date(selectedDate), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
           {periodFilter === 'week' && (() => {
             const baseDate = new Date(selectedDate);
-            const weekStart = startOfWeek(baseDate, { locale: ptBR });
-            const weekEnd = endOfWeek(baseDate, { locale: ptBR });
+            const weekStart = startOfWeek(baseDate, { locale: ptBR, weekStartsOn: 1 });
+            const weekEnd = endOfWeek(baseDate, { locale: ptBR, weekStartsOn: 1 });
             return `${format(weekStart, "dd 'de' MMMM", { locale: ptBR })} - ${format(weekEnd, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}`;
           })()}
           {periodFilter === 'month' && format(new Date(selectedDate), "MMMM 'de' yyyy", { locale: ptBR })}
@@ -488,9 +488,13 @@ export function DailyBalanceTimeline() {
         </p>
       </CardHeader>
       <CardContent>
-        {initialBalances.length === 0 ? (
+        {banks.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground">Nenhuma conta encontrada</p>
+          </div>
+        ) : initialBalancesDisplay.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">Carregando saldos...</p>
           </div>
         ) : (
           <div className="space-y-6">
