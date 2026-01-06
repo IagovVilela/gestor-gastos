@@ -272,7 +272,7 @@ export function DailyBalanceTimeline() {
             currentBalances[purchase.bank.id] = balanceAfter;
 
             // Buscar o tipo de conta do banco
-            const bankInfo = banksRes.data.find((b: Bank) => b.id === purchase.bank.id);
+            const bankInfo = purchase.bank ? banksRes.data.find((b: Bank) => b.id === purchase.bank!.id) : null;
             
             timeline.push({
               id: purchase.id,
@@ -280,9 +280,9 @@ export function DailyBalanceTimeline() {
               description: purchase.description,
               amount: purchaseAmount,
               timestamp: purchase.createdAt || purchase.date,
-              bankId: purchase.bank.id,
-              bankName: purchase.bank.name,
-              bankColor: purchase.bank.color,
+              bankId: purchase.bank?.id,
+              bankName: purchase.bank?.name,
+              bankColor: purchase.bank?.color,
               bankType: bankInfo?.type,
               balanceBefore,
               balanceAfter,
