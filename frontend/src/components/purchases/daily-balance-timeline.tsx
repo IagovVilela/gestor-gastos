@@ -721,26 +721,28 @@ export function DailyBalanceTimeline() {
                                     {transaction.type === 'receipt' ? '+' : '-'}{formatCurrency(transaction.amount)}
                                   </p>
                                 </div>
-                                <div className="flex flex-col gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={() => handleEdit(transaction.id)}
-                                    title="Editar compra"
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-destructive hover:text-destructive"
-                                    onClick={() => setDeletingPurchaseId(transaction.id)}
-                                    title="Excluir compra"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
+                                {transaction.type === 'purchase' && (
+                                  <div className="flex flex-col gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      onClick={() => handleEdit(transaction.id)}
+                                      title="Editar compra"
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-destructive hover:text-destructive"
+                                      onClick={() => setDeletingPurchaseId(transaction.id)}
+                                      title="Excluir compra"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
