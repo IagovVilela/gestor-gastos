@@ -651,7 +651,7 @@ export function ExpenseList() {
                                   <Badge variant="outline" className="text-xs">
                                     {bankTypeLabels[account.type] || account.type}
                                   </Badge>
-                                  {isSavingsAccount && hasSavings && (
+                                  {isSavingsAccount && hasSavings && account.savingsAccount && (
                                     <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
                                       Poupança: {account.savingsAccount.name}
                                     </Badge>
