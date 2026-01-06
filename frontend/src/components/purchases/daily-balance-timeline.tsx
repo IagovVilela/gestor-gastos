@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import api from '@/lib/api';
-import { format } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatCurrency } from '@/lib/formatters';
 import { Building2, ArrowDown, Minus, Pencil, Trash2 } from 'lucide-react';
@@ -11,6 +11,7 @@ import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PurchaseForm } from './purchase-form';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -86,6 +87,7 @@ export function DailyBalanceTimeline() {
   const [transactions, setTransactions] = useState<DailyTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [periodFilter, setPeriodFilter] = useState<'day' | 'week' | 'month' | 'year'>('day');
   const [editingPurchaseId, setEditingPurchaseId] = useState<string | undefined>();
   const [deletingPurchaseId, setDeletingPurchaseId] = useState<string | undefined>();
   const [formOpen, setFormOpen] = useState(false);
@@ -104,36 +106,72 @@ export function DailyBalanceTimeline() {
     return () => {
       window.removeEventListener('balanceUpdated', handleBalanceUpdate);
     };
-  }, [selectedDate]);
+  }, [selectedDate, periodFilter]);
+
+  const getDateRange = () => {
+    const baseDate = new Date(selectedDate);
+    baseDate.setHours(0, 0, 0, 0);
+    
+    let startDate: Date;
+    let endDate: Date;
+    
+    switch (periodFilter) {
+      case 'day':
+        startDate = new Date(baseDate);
+        endDate = new Date(baseDate);
+        endDate.setDate(endDate.getDate() + 1);
+        break;
+      case 'week':
+        startDate = startOfWeek(baseDate, { locale: ptBR });
+        endDate = endOfWeek(baseDate, { locale: ptBR });
+        endDate.setDate(endDate.getDate() + 1); // Incluir o último dia
+        break;
+      case 'month':
+        startDate = startOfMonth(baseDate);
+        endDate = endOfMonth(baseDate);
+        endDate.setDate(endDate.getDate() + 1); // Incluir o último dia
+        break;
+      case 'year':
+        startDate = startOfYear(baseDate);
+        endDate = endOfYear(baseDate);
+        endDate.setDate(endDate.getDate() + 1); // Incluir o último dia
+        break;
+      default:
+        startDate = new Date(baseDate);
+        endDate = new Date(baseDate);
+        endDate.setDate(endDate.getDate() + 1);
+    }
+    
+    return {
+      startDate: format(startDate, 'yyyy-MM-dd'),
+      endDate: format(endDate, 'yyyy-MM-dd'),
+      startDateObj: startDate,
+      endDateObj: endDate,
+    };
+  };
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const selectedDateObj = new Date(selectedDate);
-      selectedDateObj.setHours(0, 0, 0, 0);
-      const isToday = selectedDateObj.getTime() === today.getTime();
-
-      // Adicionar um dia ao endDate para incluir o dia inteiro (até 23:59:59)
-      const endDatePlusOne = new Date(selectedDate);
-      endDatePlusOne.setDate(endDatePlusOne.getDate() + 1);
-      const endDateFormatted = format(endDatePlusOne, 'yyyy-MM-dd');
+      const { startDate, endDate, startDateObj, endDateObj } = getDateRange();
+      const isToday = periodFilter === 'day' && new Date(selectedDate).getTime() === today.getTime();
 
       const [banksRes, purchasesRes, receiptsRes] = await Promise.all([
         api.get('/banks'),
         api.get('/expenses', {
           params: {
-            startDate: selectedDate,
-            endDate: endDateFormatted,
-            limit: 100,
+            startDate,
+            endDate,
+            limit: 500,
           },
         }),
         api.get('/receipts', {
           params: {
-            startDate: selectedDate,
-            endDate: endDateFormatted,
-            limit: 100,
+            startDate,
+            endDate,
+            limit: 500,
           },
         }),
       ]);
@@ -158,14 +196,15 @@ export function DailyBalanceTimeline() {
         initialBalances[bank.id] = balance;
       });
 
-      // Reverter receitas do dia (subtrair do saldo atual para obter saldo inicial)
+      // Reverter receitas do período (subtrair do saldo atual para obter saldo inicial)
       const receiptsData = receiptsRes.data?.data || receiptsRes.data || [];
       receiptsData.forEach((receipt: any) => {
         if (receipt.bankId) {
           const receiptDate = new Date(receipt.date);
           receiptDate.setHours(0, 0, 0, 0);
           
-          if (receiptDate.getTime() === selectedDateObj.getTime()) {
+          // Verificar se a receita está no período selecionado
+          if (receiptDate >= startDateObj && receiptDate < endDateObj) {
             // Se é hoje, verificar se a receita já foi adicionada ao saldo
             // Se é dia passado, assumir que foi adicionada
             let wasAdded = false;
@@ -185,15 +224,15 @@ export function DailyBalanceTimeline() {
         }
       });
 
-      // Reverter despesas do dia (adicionar de volta ao saldo para obter saldo inicial)
+      // Reverter despesas do período (adicionar de volta ao saldo para obter saldo inicial)
       const purchasesData = purchasesRes.data?.data || purchasesRes.data || [];
       purchasesData.forEach((purchase: Purchase) => {
         if (purchase.bank?.id && purchase.paymentMethod !== 'CREDIT') {
           const purchaseDate = new Date(purchase.date);
           purchaseDate.setHours(0, 0, 0, 0);
           
-          // Verificar se a compra foi no dia selecionado
-          if (purchaseDate.getTime() === selectedDateObj.getTime()) {
+          // Verificar se a compra está no período selecionado
+          if (purchaseDate >= startDateObj && purchaseDate < endDateObj) {
             // Verificar se já foi descontada do saldo
             // A despesa só é descontada se paymentDate <= hoje (ou <= data selecionada para dias passados)
             // Se não tem paymentDate, usa a data da compra
@@ -207,9 +246,9 @@ export function DailyBalanceTimeline() {
               // Para hoje, verificar se paymentDate <= hoje
               wasDeducted = effectivePaymentDate <= today;
             } else {
-              // Para dias passados, verificar se paymentDate <= data selecionada
-              // Se paymentDate é futuro em relação à data selecionada, não foi descontada ainda
-              wasDeducted = effectivePaymentDate <= selectedDateObj;
+              // Para períodos passados, verificar se paymentDate <= fim do período
+              // Se paymentDate é futuro em relação ao fim do período, não foi descontada ainda
+              wasDeducted = effectivePaymentDate <= endDateObj;
             }
             
             // Sempre adicionar compras do dia à lista, mesmo se não foram descontadas ainda
@@ -268,11 +307,9 @@ export function DailyBalanceTimeline() {
         if (purchase.bank?.id && purchase.paymentMethod !== 'CREDIT') {
           const purchaseDate = new Date(purchase.date);
           purchaseDate.setHours(0, 0, 0, 0);
-          const selectedDateObjCheck = new Date(selectedDate);
-          selectedDateObjCheck.setHours(0, 0, 0, 0);
           
-          // Verificar se a compra é do dia selecionado
-          if (purchaseDate.getTime() === selectedDateObjCheck.getTime() && purchase.bank?.id) {
+          // Verificar se a compra está no período selecionado
+          if (purchaseDate >= startDateObj && purchaseDate < endDateObj && purchase.bank?.id) {
             // Verificar se já foi descontada (para calcular saldo corretamente)
             const effectivePaymentDate = purchase.paymentDate 
               ? new Date(purchase.paymentDate) 
@@ -283,7 +320,7 @@ export function DailyBalanceTimeline() {
             if (isToday) {
               wasDeducted = effectivePaymentDate <= today;
             } else {
-              wasDeducted = effectivePaymentDate <= selectedDateObjCheck;
+              wasDeducted = effectivePaymentDate <= endDateObj;
             }
             
             const purchaseAmount = typeof purchase.amount === 'string' 
@@ -405,17 +442,37 @@ export function DailyBalanceTimeline() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Extrato Diário</CardTitle>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="px-3 py-1.5 text-sm border rounded-md bg-background"
-          />
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <CardTitle>Extrato de Movimentações</CardTitle>
+          <div className="flex items-center gap-3">
+            <Tabs value={periodFilter} onValueChange={(v) => setPeriodFilter(v as any)}>
+              <TabsList>
+                <TabsTrigger value="day">Dia</TabsTrigger>
+                <TabsTrigger value="week">Semana</TabsTrigger>
+                <TabsTrigger value="month">Mês</TabsTrigger>
+                <TabsTrigger value="year">Ano</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            {periodFilter === 'day' && (
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="px-3 py-1.5 text-sm border rounded-md bg-background"
+              />
+            )}
+          </div>
         </div>
         <p className="text-sm text-muted-foreground">
-          {format(new Date(selectedDate), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+          {periodFilter === 'day' && format(new Date(selectedDate), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+          {periodFilter === 'week' && (() => {
+            const baseDate = new Date(selectedDate);
+            const weekStart = startOfWeek(baseDate, { locale: ptBR });
+            const weekEnd = endOfWeek(baseDate, { locale: ptBR });
+            return `${format(weekStart, "dd 'de' MMMM", { locale: ptBR })} - ${format(weekEnd, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}`;
+          })()}
+          {periodFilter === 'month' && format(new Date(selectedDate), "MMMM 'de' yyyy", { locale: ptBR })}
+          {periodFilter === 'year' && format(new Date(selectedDate), "yyyy", { locale: ptBR })}
         </p>
       </CardHeader>
       <CardContent>
@@ -428,7 +485,7 @@ export function DailyBalanceTimeline() {
             {/* Saldos Iniciais */}
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase">
-                Saldos Iniciais
+                {periodFilter === 'day' ? 'Saldos Iniciais' : `Saldo Inicial do ${periodFilter === 'week' ? 'Período' : periodFilter === 'month' ? 'Mês' : 'Ano'}`}
               </h3>
               {initialBalances.map((initial) => {
                 const bank = banks.find(b => b.id === initial.bankId);
