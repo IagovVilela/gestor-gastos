@@ -236,10 +236,13 @@ export function DailyBalanceTimeline() {
 
       // Reverter despesas do período (adicionar de volta ao saldo para obter saldo inicial)
       const purchasesData = purchasesRes.data?.data || purchasesRes.data || [];
+      console.log('Período selecionado:', { startDate, endDate, periodFilter, selectedDate });
+      console.log('Total de compras recebidas:', purchasesData.length);
       purchasesData.forEach((purchase: Purchase) => {
         if (purchase.bank?.id && purchase.paymentMethod !== 'CREDIT') {
           // Extrair apenas a parte da data (sem hora) para evitar problemas de timezone
           const purchaseDateStr = purchase.date.split('T')[0];
+          console.log('Verificando compra:', purchase.description, 'Data:', purchaseDateStr, 'No período?', purchaseDateStr >= startDate && purchaseDateStr < endDate);
           
           // Verificar se a compra está no período selecionado
           if (purchaseDateStr >= startDate && purchaseDateStr < endDate) {
