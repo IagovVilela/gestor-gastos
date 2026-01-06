@@ -207,13 +207,18 @@ export function DailyBalanceTimeline() {
               wasDeducted = effectivePaymentDate <= selectedDateObj;
             }
             
-            if (wasDeducted && purchase.bank?.id) {
-              // Adicionar de volta ao saldo (reverter o desconto)
-              const purchaseAmount = typeof purchase.amount === 'string' 
-                ? parseFloat(purchase.amount) 
-                : Number(purchase.amount);
-              const bankId = purchase.bank.id;
-              initialBalances[bankId] = (initialBalances[bankId] || 0) + purchaseAmount;
+            // Sempre adicionar compras do dia à lista, mesmo se não foram descontadas ainda
+            // (para mostrar na timeline)
+            if (purchase.bank?.id) {
+              // Se foi descontada, reverter o desconto para calcular saldo inicial
+              if (wasDeducted) {
+                const purchaseAmount = typeof purchase.amount === 'string' 
+                  ? parseFloat(purchase.amount) 
+                  : Number(purchase.amount);
+                const bankId = purchase.bank.id;
+                initialBalances[bankId] = (initialBalances[bankId] || 0) + purchaseAmount;
+              }
+              // Sempre adicionar à lista de compras do dia para mostrar na timeline
               todayPurchases.push(purchase);
             }
           }
@@ -258,20 +263,44 @@ export function DailyBalanceTimeline() {
         if (purchase.bank?.id && purchase.paymentMethod !== 'CREDIT') {
           const purchaseDate = new Date(purchase.date);
           purchaseDate.setHours(0, 0, 0, 0);
-          const selectedDateObj = new Date(selectedDate);
-          selectedDateObj.setHours(0, 0, 0, 0);
+          const selectedDateObjCheck = new Date(selectedDate);
+          selectedDateObjCheck.setHours(0, 0, 0, 0);
           
-          if (purchaseDate.getTime() === selectedDateObj.getTime() && purchase.bank?.id) {
-            // Calcular saldo antes (saldo atual antes desta compra)
+          // Verificar se a compra é do dia selecionado
+          if (purchaseDate.getTime() === selectedDateObjCheck.getTime() && purchase.bank?.id) {
+            // Verificar se já foi descontada (para calcular saldo corretamente)
+            const effectivePaymentDate = purchase.paymentDate 
+              ? new Date(purchase.paymentDate) 
+              : new Date(purchase.date);
+            effectivePaymentDate.setHours(0, 0, 0, 0);
+            
+            let wasDeducted = false;
+            if (isToday) {
+              wasDeducted = effectivePaymentDate <= today;
+            } else {
+              wasDeducted = effectivePaymentDate <= selectedDateObjCheck;
+            }
+            
             const purchaseAmount = typeof purchase.amount === 'string' 
               ? parseFloat(purchase.amount) 
               : Number(purchase.amount);
             const bankId = purchase.bank.id;
-            const balanceBefore = currentBalances[bankId] || initialBalances[bankId] || 0;
-            const balanceAfter = balanceBefore - purchaseAmount;
             
-            // Atualizar saldo atual para próxima compra
-            currentBalances[bankId] = balanceAfter;
+            // Se foi descontada, calcular saldo antes e depois
+            // Se não foi descontada ainda, mostrar saldo atual (não muda)
+            let balanceBefore: number;
+            let balanceAfter: number;
+            
+            if (wasDeducted) {
+              balanceBefore = currentBalances[bankId] || initialBalances[bankId] || 0;
+              balanceAfter = balanceBefore - purchaseAmount;
+              // Atualizar saldo atual para próxima compra
+              currentBalances[bankId] = balanceAfter;
+            } else {
+              // Se não foi descontada ainda, o saldo não muda
+              balanceBefore = currentBalances[bankId] || initialBalances[bankId] || 0;
+              balanceAfter = balanceBefore;
+            }
 
             // Buscar o tipo de conta do banco
             const bankInfo = purchase.bank ? banksRes.data.find((b: Bank) => b.id === purchase.bank!.id) : null;
