@@ -164,7 +164,10 @@ export function DailyBalanceTimeline() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const { startDate, endDate, startDateObj, endDateObj } = getDateRange();
-      const isToday = periodFilter === 'day' && new Date(selectedDate).getTime() === today.getTime();
+      const isToday = periodFilter === 'day' && selectedDate === format(today, 'yyyy-MM-dd');
+      
+      // Debug: verificar período calculado
+      console.log('Período calculado:', { startDate, endDate, selectedDate, periodFilter });
 
       const [banksRes, purchasesRes, receiptsRes] = await Promise.all([
         api.get('/banks'),
@@ -239,6 +242,7 @@ export function DailyBalanceTimeline() {
 
       // Reverter despesas do período (adicionar de volta ao saldo para obter saldo inicial)
       const purchasesData = purchasesRes.data?.data || purchasesRes.data || [];
+      console.log('Compras recebidas da API:', purchasesData.length);
       purchasesData.forEach((purchase: Purchase) => {
         if (purchase.bank?.id && purchase.paymentMethod !== 'CREDIT') {
           // Extrair apenas a parte da data (sem hora) para evitar problemas de timezone
@@ -246,6 +250,8 @@ export function DailyBalanceTimeline() {
           const purchaseDateStr = purchase.date.includes('T') 
             ? purchase.date.split('T')[0] 
             : purchase.date.substring(0, 10);
+          
+          console.log(`Compra: ${purchase.description}, Data: ${purchaseDateStr}, No período? ${purchaseDateStr >= startDate && purchaseDateStr < endDate}`);
           
           // Verificar se a compra está no período selecionado
           if (purchaseDateStr >= startDate && purchaseDateStr < endDate) {
@@ -382,6 +388,9 @@ export function DailyBalanceTimeline() {
         new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
       );
 
+      console.log('Timeline final:', timeline.length, 'transações');
+      console.log('Compras na timeline:', timeline.filter(t => t.type === 'purchase').length);
+      
       setTransactions(timeline);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
