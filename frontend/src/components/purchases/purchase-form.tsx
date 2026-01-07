@@ -180,7 +180,7 @@ export function PurchaseForm({ onSuccess, purchaseId, onCancel, showCard = true 
               id="description"
               {...register('description')}
               placeholder="Ex: Supermercado, Farmácia..."
-              className="w-full"
+              className="w-full text-base"
             />
             {errors.description && (
               <p className="text-sm text-destructive">
@@ -189,7 +189,7 @@ export function PurchaseForm({ onSuccess, purchaseId, onCancel, showCard = true 
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="amount">Valor *</Label>
               <Input
@@ -198,6 +198,7 @@ export function PurchaseForm({ onSuccess, purchaseId, onCancel, showCard = true 
                 step="0.01"
                 {...register('amount')}
                 placeholder="0.00"
+                className="text-base"
               />
               {errors.amount && (
                 <p className="text-sm text-destructive">
@@ -208,7 +209,12 @@ export function PurchaseForm({ onSuccess, purchaseId, onCancel, showCard = true 
 
             <div className="space-y-2">
               <Label htmlFor="date">Data *</Label>
-              <Input id="date" type="date" {...register('date')} />
+              <Input 
+                id="date" 
+                type="date" 
+                {...register('date')} 
+                className="text-base"
+              />
               {errors.date && (
                 <p className="text-sm text-destructive">
                   {errors.date.message}
@@ -217,14 +223,14 @@ export function PurchaseForm({ onSuccess, purchaseId, onCancel, showCard = true 
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="paymentMethod">Forma de Pagamento</Label>
               <Select
                 value={watch('paymentMethod') || 'none'}
                 onValueChange={(value) => setValue('paymentMethod', value === 'none' ? undefined : value as any)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="text-base">
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
@@ -244,7 +250,7 @@ export function PurchaseForm({ onSuccess, purchaseId, onCancel, showCard = true 
                 value={watch('bankId') || 'none'}
                 onValueChange={(value) => setValue('bankId', value === 'none' ? '' : value)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="text-base">
                   <SelectValue placeholder="Selecione um banco" />
                 </SelectTrigger>
                 <SelectContent>

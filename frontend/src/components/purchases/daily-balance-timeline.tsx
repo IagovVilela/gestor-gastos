@@ -583,15 +583,15 @@ export function DailyBalanceTimeline() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <CardTitle>Extrato de Movimentações</CardTitle>
-          <div className="flex items-center gap-3">
-            <Tabs value={periodFilter} onValueChange={(v) => setPeriodFilter(v as any)}>
-              <TabsList>
-                <TabsTrigger value="day">Dia</TabsTrigger>
-                <TabsTrigger value="week">Semana</TabsTrigger>
-                <TabsTrigger value="month">Mês</TabsTrigger>
-                <TabsTrigger value="year">Ano</TabsTrigger>
+        <div className="flex flex-col gap-4">
+          <CardTitle className="text-lg sm:text-xl">Extrato de Movimentações</CardTitle>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <Tabs value={periodFilter} onValueChange={(v) => setPeriodFilter(v as any)} className="w-full sm:w-auto">
+              <TabsList className="grid grid-cols-4 w-full sm:w-auto">
+                <TabsTrigger value="day" className="text-xs sm:text-sm">Dia</TabsTrigger>
+                <TabsTrigger value="week" className="text-xs sm:text-sm">Semana</TabsTrigger>
+                <TabsTrigger value="month" className="text-xs sm:text-sm">Mês</TabsTrigger>
+                <TabsTrigger value="year" className="text-xs sm:text-sm">Ano</TabsTrigger>
               </TabsList>
             </Tabs>
             {periodFilter === 'day' && (
@@ -599,7 +599,7 @@ export function DailyBalanceTimeline() {
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="px-3 py-1.5 text-sm border rounded-md bg-background"
+                className="px-3 py-2.5 text-base border rounded-md bg-background flex-1 sm:flex-initial min-w-0"
               />
             )}
           </div>
@@ -744,26 +744,26 @@ export function DailyBalanceTimeline() {
 
                           {/* Conteúdo da transação */}
                           <div className="flex-1 min-w-0 pb-4">
-                            <div className="flex items-start justify-between gap-4">
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <p className="font-medium truncate">{transaction.description}</p>
+                                <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                                  <p className="font-medium text-sm sm:text-base truncate">{transaction.description}</p>
                                   {transaction.paymentMethod && (
-                                    <Badge variant="outline" className="text-xs">
+                                    <Badge variant="outline" className="text-xs shrink-0">
                                       {paymentMethodLabels[transaction.paymentMethod] || transaction.paymentMethod}
                                     </Badge>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                                <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground mb-2">
                                   <span
-                                    className="w-2 h-2 rounded-full"
+                                    className="w-2 h-2 rounded-full shrink-0"
                                     style={{ backgroundColor: transaction.bankColor || '#8B5CF6' }}
                                   />
-                                  <span>{transaction.bankName}</span>
+                                  <span className="truncate">{transaction.bankName}</span>
                                   {transaction.bankType && (
                                     <>
-                                      <span>•</span>
-                                      <span>{bankTypeLabels[transaction.bankType] || transaction.bankType}</span>
+                                      <span className="hidden sm:inline">•</span>
+                                      <span className="hidden sm:inline">{bankTypeLabels[transaction.bankType] || transaction.bankType}</span>
                                     </>
                                   )}
                                   <span>•</span>
@@ -771,16 +771,18 @@ export function DailyBalanceTimeline() {
                                     {format(new Date(transaction.timestamp), 'HH:mm', { locale: ptBR })}
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-4 text-sm">
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm">
                                   <div>
                                     <span className="text-muted-foreground">Antes: </span>
                                     <span className="font-medium">{formatCurrency(transaction.balanceBefore)}</span>
                                   </div>
-                                  {transaction.type === 'receipt' ? (
-                                    <ArrowUp className="h-4 w-4 text-primary" />
-                                  ) : (
-                                    <ArrowDown className="h-4 w-4 text-destructive" />
-                                  )}
+                                  <div className="hidden sm:block">
+                                    {transaction.type === 'receipt' ? (
+                                      <ArrowUp className="h-4 w-4 text-primary" />
+                                    ) : (
+                                      <ArrowDown className="h-4 w-4 text-destructive" />
+                                    )}
+                                  </div>
                                   <div>
                                     <span className="text-muted-foreground">Depois: </span>
                                     <span className={`font-semibold ${transaction.type === 'receipt' ? 'text-primary' : 'text-destructive'}`}>
@@ -789,31 +791,31 @@ export function DailyBalanceTimeline() {
                                   </div>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2 flex-shrink-0">
-                                <div className="text-right">
-                                  <p className={`text-lg font-bold ${transaction.type === 'receipt' ? 'text-primary' : 'text-destructive'}`}>
+                              <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-2 flex-shrink-0">
+                                <div className="text-right sm:text-left">
+                                  <p className={`text-base sm:text-lg font-bold ${transaction.type === 'receipt' ? 'text-primary' : 'text-destructive'}`}>
                                     {transaction.type === 'receipt' ? '+' : '-'}{formatCurrency(transaction.amount)}
                                   </p>
                                 </div>
                                 {transaction.type === 'purchase' && (
-                                  <div className="flex flex-col gap-1">
+                                  <div className="flex gap-1 sm:flex-col sm:gap-1">
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-8 w-8"
+                                      className="h-10 w-10 sm:h-8 sm:w-8"
                                       onClick={() => handleEdit(transaction.id)}
                                       title="Editar compra"
                                     >
-                                      <Pencil className="h-4 w-4" />
+                                      <Pencil className="h-4 w-4 sm:h-4 sm:w-4" />
                                     </Button>
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-8 w-8 text-destructive hover:text-destructive"
+                                      className="h-10 w-10 sm:h-8 sm:w-8 text-destructive hover:text-destructive"
                                       onClick={() => setDeletingPurchaseId(transaction.id)}
                                       title="Excluir compra"
                                     >
-                                      <Trash2 className="h-4 w-4" />
+                                      <Trash2 className="h-4 w-4 sm:h-4 sm:w-4" />
                                     </Button>
                                   </div>
                                 )}

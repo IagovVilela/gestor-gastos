@@ -294,16 +294,14 @@ export function DepositWithdrawDialog({
               </>
             )}
           </DialogTitle>
-          <DialogDescription>
-            {account && (
-              <div className="mt-2">
-                <p className="font-semibold">{account.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  Valor atual: {formatCurrency(account.currentAmount)}
-                </p>
-              </div>
-            )}
-          </DialogDescription>
+          {account && (
+            <div className="mt-2 space-y-1">
+              <p className="font-semibold text-sm">{account.name}</p>
+              <p className="text-sm text-muted-foreground">
+                Valor atual: {formatCurrency(account.currentAmount)}
+              </p>
+            </div>
+          )}
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto space-y-4 pr-2">

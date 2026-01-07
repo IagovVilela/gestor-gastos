@@ -486,7 +486,7 @@ export function CreditCardBillList() {
           setSelectedBillForPayment(null);
         }
       }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
           <DialogHeader>
             <DialogTitle>Pagar Fatura do Cartão</DialogTitle>
             <DialogDescription>

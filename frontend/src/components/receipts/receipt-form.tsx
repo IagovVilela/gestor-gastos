@@ -194,7 +194,7 @@ export function ReceiptForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
         <DialogHeader>
           <DialogTitle>
             {receiptId ? 'Editar Receita' : 'Nova Receita'}
@@ -212,6 +212,7 @@ export function ReceiptForm({
               id="description"
               {...register('description')}
               placeholder="Ex: Salário"
+              className="text-base"
             />
             {errors.description && (
               <p className="text-sm text-destructive">
@@ -220,7 +221,7 @@ export function ReceiptForm({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="amount">Valor *</Label>
               <Input
@@ -229,6 +230,7 @@ export function ReceiptForm({
                 step="0.01"
                 {...register('amount')}
                 placeholder="0.00"
+                className="text-base"
               />
               {errors.amount && (
                 <p className="text-sm text-destructive">
@@ -239,7 +241,12 @@ export function ReceiptForm({
 
             <div className="space-y-2">
               <Label htmlFor="date">Data *</Label>
-              <Input id="date" type="date" {...register('date')} />
+              <Input 
+                id="date" 
+                type="date" 
+                {...register('date')} 
+                className="text-base"
+              />
               {errors.date && (
                 <p className="text-sm text-destructive">
                   {errors.date.message}
@@ -248,14 +255,14 @@ export function ReceiptForm({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="categoryId">Categoria</Label>
               <Select
                 value={watch('categoryId') || 'none'}
                 onValueChange={(value) => setValue('categoryId', value === 'none' ? '' : value)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="text-base">
                   <SelectValue placeholder="Selecione uma categoria" />
                 </SelectTrigger>
                 <SelectContent>
@@ -275,7 +282,7 @@ export function ReceiptForm({
                 value={watch('bankId') || 'none'}
                 onValueChange={(value) => setValue('bankId', value === 'none' ? '' : value)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="text-base">
                   <SelectValue placeholder="Selecione um banco" />
                 </SelectTrigger>
                 <SelectContent>

@@ -299,7 +299,7 @@ export function BankForm({ open, onOpenChange, onSuccess, bankId }: BankFormProp
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col w-[95vw] sm:w-full">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>{bankId ? 'Editar Banco' : 'Novo Banco'}</DialogTitle>
           <DialogDescription>

@@ -184,11 +184,10 @@ export function ExpenseList() {
     }
   };
 
-
   const handleMarkAsPaid = (expenseId: string, currentIsPaid: boolean) => {
     if (currentIsPaid) {
       // Se já está pago, apenas desmarcar
-      handleTogglePaid(expenseId, false);
+      handleTogglePaid(expenseId, false, undefined, undefined);
     } else {
       // Se não está pago, abrir diálogo para selecionar banco
       const expense = expenses.find(e => e.id === expenseId);
@@ -296,11 +295,12 @@ export function ExpenseList() {
     }
     acc[bankName].push(bank);
     return acc;
-  }, {} as Record<string, typeof banks>);
+  }, {} as Record<string, Array<typeof banks[number]>>);
 
-  const expenseAmount = selectedExpense ? selectedExpense.amount : 0;
-  const combinedTotal = Object.values(combinedPayments).reduce((sum, amount) => sum + amount, 0);
-  const remainingAmount = expenseAmount - combinedTotal;
+  // Calcular valores para o diálogo de pagamento
+  const expenseAmount: number = selectedExpense ? selectedExpense.amount : 0;
+  const combinedTotal: number = Object.values(combinedPayments).reduce((sum, amount) => sum + amount, 0);
+  const remainingAmount: number = expenseAmount - combinedTotal;
 
   if (loading) {
     return (
@@ -345,34 +345,57 @@ export function ExpenseList() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="flex flex-col sm:flex-row items-start sm:items-center justify-between border rounded-lg p-4 hover:shadow-md transition-shadow gap-4"
+                  className="flex flex-col border rounded-lg p-4 sm:p-4 hover:shadow-md transition-shadow gap-4"
                 >
-                  <div className="flex items-start sm:items-center gap-4 flex-1 w-full sm:w-auto min-w-0">
-                    <ArrowDownCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-1 sm:mt-0" />
+                  <div className="flex items-start gap-3 flex-1 w-full min-w-0">
+                    <ArrowDownCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium truncate">{expense.description}</p>
+                      <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                        <p className="font-medium text-sm sm:text-base truncate">{expense.description}</p>
                         {expense.isPaid && (
-                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300 shrink-0">
                             <Check className="h-3 w-3 mr-1" />
                             Paga
                           </Badge>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {format(new Date(expense.date), "dd 'de' MMM 'de' yyyy", {
-                          locale: ptBR,
-                        })}
+                      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-1 sm:gap-0 text-xs sm:text-sm text-muted-foreground">
+                        <span>
+                          {format(new Date(expense.date), "dd 'de' MMM 'de' yyyy", {
+                            locale: ptBR,
+                          })}
+                        </span>
                         {expense.paymentDate && expense.paymentDate !== expense.date && (
-                          <> • Pagar em {format(new Date(expense.paymentDate), "dd 'de' MMM", { locale: ptBR })}</>
+                          <>
+                            <span className="hidden sm:inline"> • </span>
+                            <span className="sm:inline">Pagar em {format(new Date(expense.paymentDate), "dd 'de' MMM", { locale: ptBR })}</span>
+                          </>
                         )}
                         {expense.isPaid && expense.paidBank && (
-                          <> • Pago com: <span className="font-semibold">{expense.paidBank.name}</span></>
+                          <>
+                            <span className="hidden sm:inline"> • </span>
+                            <span className="sm:inline">Pago com: <span className="font-semibold">{expense.paidBank.name}</span></span>
+                          </>
                         )}
-                        {expense.category && ` • ${expense.category.name}`}
-                        {expense.isFixed && ` • Fixo`}
-                        {expense.isRecurring && ` • Recorrente`}
-                      </p>
+                        {expense.category && (
+                          <>
+                            <span className="hidden sm:inline"> • </span>
+                            <span className="sm:inline">{expense.category.name}</span>
+                          </>
+                        )}
+                        {expense.isFixed && (
+                          <>
+                            <span className="hidden sm:inline"> • </span>
+                            <span className="sm:inline">Fixo</span>
+                          </>
+                        )}
+                        {expense.isRecurring && (
+                          <>
+                            <span className="hidden sm:inline"> • </span>
+                            <span className="sm:inline">Recorrente</span>
+                          </>
+                        )}
+                      </div>
                       {expense.receiptImageUrl && (
                         <div className="mt-2">
                           <div className="relative w-16 h-16 rounded-md overflow-hidden border">
@@ -386,15 +409,15 @@ export function ExpenseList() {
                         </div>
                       )}
                     </div>
-                    <div className="text-right sm:text-left flex-shrink-0">
+                    <div className="text-right flex-shrink-0">
                       <p className="font-semibold text-red-600 text-lg sm:text-base">
                         {formatCurrency(expense.amount)}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 w-full sm:w-auto justify-end sm:justify-start">
+                  <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pt-2 border-t sm:border-0">
                     <div className="flex items-center gap-2">
-                      <Label htmlFor={`paid-${expense.id}`} className="text-sm text-muted-foreground">
+                      <Label htmlFor={`paid-${expense.id}`} className="text-xs sm:text-sm text-muted-foreground">
                         Paga
                       </Label>
                       <Switch
@@ -403,23 +426,27 @@ export function ExpenseList() {
                         onCheckedChange={(checked) => handleMarkAsPaid(expense.id, !checked)}
                       />
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setEditingExpense(expense.id);
-                        setFormOpen(true);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setDeletingExpense(expense.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 sm:h-8 sm:w-8"
+                        onClick={() => {
+                          setEditingExpense(expense.id);
+                          setFormOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 sm:h-8 sm:w-8"
+                        onClick={() => setDeletingExpense(expense.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
                 </motion.div>
               ))}
@@ -428,27 +455,29 @@ export function ExpenseList() {
 
           {/* Paginação */}
           {pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4 pt-4 border-t">
-              <div className="text-sm text-muted-foreground">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 pt-4 border-t">
+              <div className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
                 Mostrando {((pagination.page - 1) * pagination.limit) + 1} a {Math.min(pagination.page * pagination.limit, pagination.total)} de {pagination.total} despesas
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 w-full sm:w-auto">
                 <Button
                   variant="outline"
                   size="sm"
+                  className="flex-1 sm:flex-initial min-h-[44px] sm:min-h-0"
                   onClick={() => fetchExpenses(pagination.page - 1)}
                   disabled={pagination.page === 1 || loading}
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  Anterior
+                  <span className="hidden sm:inline">Anterior</span>
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
+                  className="flex-1 sm:flex-initial min-h-[44px] sm:min-h-0"
                   onClick={() => fetchExpenses(pagination.page + 1)}
                   disabled={pagination.page >= pagination.totalPages || loading}
                 >
-                  Próxima
+                  <span className="hidden sm:inline">Próxima</span>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -503,7 +532,7 @@ export function ExpenseList() {
           setCombinedPayments({});
         }
       }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
           <DialogHeader>
             <DialogTitle>Marcar Despesa como Paga</DialogTitle>
             <DialogDescription>

@@ -482,20 +482,20 @@ export function CreditCardBill() {
               )}
 
             {/* Resumo */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-4 border rounded-lg">
-                <p className="text-sm text-muted-foreground mb-1">Total</p>
-                <p className="text-2xl font-bold">{formatCurrency(data?.total || 0)}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+              <div className="text-center p-3 sm:p-4 border rounded-lg">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-1">Total</p>
+                <p className="text-xl sm:text-2xl font-bold">{formatCurrency(data?.total || 0)}</p>
               </div>
-              <div className="text-center p-4 border rounded-lg bg-green-50 dark:bg-green-950">
-                <p className="text-sm text-muted-foreground mb-1">Já Pagas</p>
-                <p className="text-2xl font-bold text-green-600">
+              <div className="text-center p-3 sm:p-4 border rounded-lg bg-green-50 dark:bg-green-950">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-1">Já Pagas</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-600">
                   {formatCurrency(data?.paidTotal || 0)}
                 </p>
               </div>
-              <div className="text-center p-4 border rounded-lg bg-red-50 dark:bg-red-950">
-                <p className="text-sm text-muted-foreground mb-1">A Pagar</p>
-                <p className="text-2xl font-bold text-red-600">
+              <div className="text-center p-3 sm:p-4 border rounded-lg bg-red-50 dark:bg-red-950">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-1">A Pagar</p>
+                <p className="text-xl sm:text-2xl font-bold text-red-600">
                   {formatCurrency(data?.unpaidTotal || 0)}
                 </p>
               </div>
@@ -512,22 +512,22 @@ export function CreditCardBill() {
                   {data.unpaid.map((expense) => (
                     <div
                       key={expense.id}
-                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors gap-3"
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{expense.description}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <p className="text-sm text-muted-foreground">
+                        <p className="font-medium text-sm sm:text-base truncate">{expense.description}</p>
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-1.5">
+                          <p className="text-xs sm:text-sm text-muted-foreground">
                             {format(new Date(expense.paymentDate), "dd 'de' MMM", {
                               locale: ptBR,
                             })}
                           </p>
                           {expense.paymentSource && (
                             <>
-                              <span className="text-muted-foreground">•</span>
+                              <span className="text-muted-foreground hidden sm:inline">•</span>
                               <Badge 
                                 variant="outline" 
-                                className={`text-xs ${
+                                className={`text-xs shrink-0 ${
                                   expense.paymentSource.type === 'current_balance' 
                                     ? 'bg-blue-50 text-blue-700 border-blue-300'
                                     : expense.paymentSource.type === 'future_receipts'
@@ -541,15 +541,15 @@ export function CreditCardBill() {
                           )}
                           {expense.category && (
                             <>
-                              <span className="text-muted-foreground">•</span>
-                              <Badge variant="outline" className="text-xs">
+                              <span className="text-muted-foreground hidden sm:inline">•</span>
+                              <Badge variant="outline" className="text-xs shrink-0">
                                 {expense.category.name}
                               </Badge>
                             </>
                           )}
                           {expense.bank && (
                             <>
-                              <span className="text-muted-foreground">•</span>
+                              <span className="text-muted-foreground hidden sm:inline">•</span>
                               <span className="text-xs text-muted-foreground">
                                 {expense.bank.name}
                               </span>
@@ -557,9 +557,9 @@ export function CreditCardBill() {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 ml-4">
-                        <div className="text-right">
-                          <p className="font-semibold text-red-600">
+                      <div className="flex items-center justify-between sm:justify-end gap-3 sm:ml-4 flex-shrink-0">
+                        <div className="text-left sm:text-right">
+                          <p className="font-semibold text-red-600 text-base sm:text-base">
                             {formatCurrency(expense.amount)}
                           </p>
                         </div>
@@ -585,13 +585,13 @@ export function CreditCardBill() {
                   {data.paid.map((expense) => (
                     <div
                       key={expense.id}
-                      className="flex items-center justify-between p-3 border rounded-lg bg-muted/30 opacity-75"
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg bg-muted/30 opacity-75 gap-3"
                     >
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium truncate">{expense.description}</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-medium text-sm sm:text-base truncate">{expense.description}</p>
                           {expense.isPaid && (
-                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300 shrink-0">
                               <Check className="h-3 w-3 mr-1" />
                               Paga
                             </Badge>
@@ -673,7 +673,7 @@ export function CreditCardBill() {
           setExpenseCombinedPayments({});
         }
       }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
           <DialogHeader>
             <DialogTitle>Marcar Despesa como Paga</DialogTitle>
             <DialogDescription>
@@ -970,7 +970,7 @@ export function CreditCardBill() {
           setCombinedPayments({});
         }
       }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
           <DialogHeader>
             <DialogTitle>Pagar Fatura do Cartão</DialogTitle>
             <DialogDescription>

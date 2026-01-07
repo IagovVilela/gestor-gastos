@@ -230,7 +230,7 @@ export function ExpenseForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
         <DialogHeader>
           <DialogTitle>
             {expenseId ? 'Editar Despesa' : 'Nova Despesa'}
@@ -248,7 +248,7 @@ export function ExpenseForm({
               id="description"
               {...register('description')}
               placeholder="Ex: Supermercado"
-              className="w-full"
+              className="w-full text-base"
             />
             {errors.description && (
               <p className="text-sm text-destructive">
@@ -257,7 +257,7 @@ export function ExpenseForm({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="amount">Valor *</Label>
               <Input
@@ -266,6 +266,7 @@ export function ExpenseForm({
                 step="0.01"
                 {...register('amount')}
                 placeholder="0.00"
+                className="text-base"
               />
               {errors.amount && (
                 <p className="text-sm text-destructive">
@@ -276,7 +277,12 @@ export function ExpenseForm({
 
             <div className="space-y-2">
               <Label htmlFor="date">Data *</Label>
-              <Input id="date" type="date" {...register('date')} />
+              <Input 
+                id="date" 
+                type="date" 
+                {...register('date')} 
+                className="text-base"
+              />
               {errors.date && (
                 <p className="text-sm text-destructive">
                   {errors.date.message}
@@ -285,14 +291,14 @@ export function ExpenseForm({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="categoryId">Categoria</Label>
               <Select
                 value={watch('categoryId') || 'none'}
                 onValueChange={(value) => setValue('categoryId', value === 'none' ? '' : value)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="text-base">
                   <SelectValue placeholder="Selecione uma categoria" />
                 </SelectTrigger>
                 <SelectContent>
@@ -312,7 +318,7 @@ export function ExpenseForm({
                 value={watch('bankId') || 'none'}
                 onValueChange={(value) => setValue('bankId', value === 'none' ? '' : value)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="text-base">
                   <SelectValue placeholder="Selecione um banco" />
                 </SelectTrigger>
                 <SelectContent>
@@ -327,7 +333,7 @@ export function ExpenseForm({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="paymentDate">Data de Pagamento (Opcional)</Label>
               <Input
@@ -335,6 +341,7 @@ export function ExpenseForm({
                 type="date"
                 {...register('paymentDate')}
                 placeholder="Deixe vazio para pagar hoje"
+                className="text-base"
               />
               <p className="text-xs text-muted-foreground">
                 Se informar, será um lançamento futuro
@@ -347,7 +354,7 @@ export function ExpenseForm({
                 value={watch('paymentMethod') || 'none'}
                 onValueChange={(value) => setValue('paymentMethod', value === 'none' ? undefined : value as any)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="text-base">
                   <SelectValue placeholder="Selecione a forma de pagamento" />
                 </SelectTrigger>
                 <SelectContent>

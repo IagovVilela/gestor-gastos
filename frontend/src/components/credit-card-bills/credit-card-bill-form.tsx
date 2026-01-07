@@ -162,7 +162,7 @@ export function CreditCardBillForm({ open, onOpenChange, onSuccess, billId }: Cr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
         <DialogHeader>
           <DialogTitle>{billId ? 'Editar Fatura' : 'Nova Fatura'}</DialogTitle>
           <DialogDescription>
